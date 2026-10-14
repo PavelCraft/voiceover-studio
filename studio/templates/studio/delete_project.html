@@ -1,0 +1,18 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Delete project — Voiceover Studio" %}{% endblock %}
+{% block content %}
+<section class="card delete-card">
+  <p class="step">{% trans "Permanent deletion" %}</p>
+  <h1>{% trans "Delete project?" %}</h1>
+  <p>{% blocktrans with name=project.audio_name %}The project “{{ name }}” and all of its uploaded, intermediate and output files will be permanently deleted from this computer.{% endblocktrans %}</p>
+  <p class="error-box">{% trans "This action cannot be undone." %}</p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="project-actions">
+      <a class="button secondary" href="{% url 'dashboard' %}">{% trans "Cancel" %}</a>
+      <button class="button danger-button" type="submit">{% trans "Delete project and files" %}</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

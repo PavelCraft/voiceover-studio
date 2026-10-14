@@ -1,0 +1,29 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Add video — Voiceover Studio" %}{% endblock %}
+{% block navigation %}
+<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
+  <a class="button secondary" href="{% url 'edit-audio' project_id=project.id %}">{% trans "Back" %}</a>
+  {% if project.video_file %}<a class="button secondary" href="{% url 'project-summary' project_id=project.id %}">{% trans "Forward" %}</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endblock %}
+{% block content %}
+<p class="step">{% trans "Step 2 of 2" %}</p>
+<h1>{% trans "Add the source video" %}</h1>
+<section class="card">
+  <p>{% trans "The video is required even if you want only an audio file. Voiceover Studio uses its exact duration to create an audio track that lines up with the video on YouTube." %}</p>
+  <p class="muted">{% trans "Accepted formats: MP4, WebM, MKV, MOV, AVI, and M4V." %}</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <label for="id_video_file">{% trans "Source video" %}</label>
+    {{ form.video_file }}
+    {{ form.video_file.errors }}
+    <fieldset>
+      <legend>{% trans "Export mode" %}</legend>
+      {{ form.output_mode }}
+    </fieldset>
+    <button class="button primary" type="submit">{% trans "Continue" %}</button>
+  </form>
+</section>
+{% endblock %}

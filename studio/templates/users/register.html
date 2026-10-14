@@ -1,0 +1,15 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Create account — Voiceover Studio" %}{% endblock %}
+{% block content %}
+<section class="auth-card card">
+  <p class="step">{% trans "Account" %}</p>
+  <h1>{% trans "Create account" %}</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="button primary" type="submit">{% trans "Create account" %}</button>
+  </form>
+  <p class="muted">{% trans "Already registered?" %} <a href="{% url 'users:login' %}">{% trans "Sign in" %}</a></p>
+</section>
+{% endblock %}

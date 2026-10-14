@@ -1,0 +1,230 @@
+{% extends "studio/base.html" %}
+{% load i18n static %}
+{% block title %}{% trans "Project — Voiceover Studio" %}{% endblock %}
+{% block navigation %}
+<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
+  <a class="button secondary" href="{% url 'upload-video' project_id=project.id %}">{% trans "Back" %}</a>
+  <span></span>
+</nav>
+{% endblock %}
+{% block content %}
+{% for message in messages %}<div class="notice">{{ message }}</div>{% endfor %}
+<p class="step">{% trans "Files received" %}</p>
+<h1>{% trans "Project ready for processing" %}</h1>
+<section class="card">
+  <dl class="summary">
+    <dt>{% trans "Voiceover" %}</dt><dd>{{ project.audio_name }}</dd>
+    <dt>{% trans "Video" %}</dt><dd>{{ project.video_name }}</dd>
+    <dt>{% trans "Timecodes" %}</dt><dd>{% if project.timecodes_text %}{% trans "Entered manually" %}{% else %}{{ project.timecodes_name }}{% endif %}</dd>
+    <dt>{% trans "Export" %}</dt><dd>{{ project.get_output_mode_display }}</dd>
+  </dl>
+
+  {% if project.processing_status == "queued" or project.processing_status == "processing" %}
+  <section
+    class="progress-panel"
+    id="processing-progress"
+    data-status-url="{% url 'processing-status' project_id=project.id %}"
+    data-stage-index="{{ processing_stage_index }}"
+    aria-live="polite"
+  >
+    <h2>{% if project.processing_step == "rendering" %}{% trans "Building final result" %}{% else %}{% trans "Preparing voiceover" %}{% endif %}</h2>
+    <p id="progress-current">{% trans "Processing is running…" %}</p>
+    <p class="muted">{% trans "You can leave this page and return later." %}</p>
+    <ol class="progress-stage-list">
+      {% for step_label in processing_steps %}
+      <li class="progress-stage" data-stage-index="{{ forloop.counter0 }}">
+        <span class="progress-marker" aria-hidden="true">○</span>
+        <span class="progress-label">{{ step_label }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+  {% else %}
+  <form method="post" action="{% url 'process-audio' project_id=project.id %}">
+    {% csrf_token %}
+    <button class="button primary" type="submit">{% if project.processing_status == "complete" %}{% trans "Process again" %}{% else %}{% trans "Recognize and split audio" %}{% endif %}</button>
+  </form>
+  {% endif %}
+</section>
+
+{% if project.processing_error %}
+<section class="card error-box"><h2>{% trans "Processing error" %}</h2><p>{{ project.processing_error }}</p></section>
+{% endif %}
+
+{% if output_url %}
+<section class="card">
+  <h2>{% trans "Result" %}</h2>
+  <a class="button primary" href="{{ output_url }}" download>{% trans "Download result" %}</a>
+</section>
+{% endif %}
+
+{% if segments %}
+<section class="card">
+  <h2>{% trans "Voiceover fragments" %}</h2>
+  <p class="muted">{% trans "Listen to every fragment. Low-confidence matches are highlighted and should be checked carefully." %}</p>
+  {% if project.processing_status != "queued" and project.processing_status != "processing" %}
+  <form method="post" action="{% url 'render-project' project_id=project.id %}" class="render-project-form">
+    {% csrf_token %}
+    <p class="muted">{% trans "When all fragments are correct, build the final audio track or video." %}</p>
+    <button class="button primary" type="submit">{% trans "Build final result" %}</button>
+  </form>
+  {% endif %}
+  <div class="segments">
+    {% for segment in segments %}
+      <article id="segment-{{ segment.position }}" class="segment{% if segment.status != 'ok' and segment.status != 'manual' and segment.status != 'replacement' %} segment-warning{% endif %}">
+        <div class="segment-heading">
+          <strong>{{ segment.position }}. {{ segment.video_start|floatformat:2 }} s</strong>
+          <span>{% trans "Match" %}: {% if segment.recognition_score != None %}{{ segment.recognition_score|floatformat:2 }}{% else %}—{% endif %}</span>
+          {% if segment.speed > 1.001 %}<span>{% trans "Speed" %}: ×{{ segment.speed|floatformat:2 }}</span>{% endif %}
+          {% if segment.status == "replacement" %}<span>{% trans "Replacement audio" %}</span>{% endif %}
+        </div>
+        <p>{{ segment.text }}</p>
+        {% if segment.audio_file %}
+          <div class="segment-player">
+            <button class="segment-player-toggle" type="button" aria-label="{% trans 'Play' %}">▶</button>
+            <span class="segment-player-time">0:00 / --:--</span>
+            <input class="segment-player-seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="{% trans 'Playback position' %}">
+            <button class="segment-player-volume" type="button" aria-label="{% trans 'Mute or unmute' %}">🔊</button>
+            <a class="segment-player-download" href="{% url 'segment-editor-audio' project_id=project.id %}?segment={{ segment.position }}&amp;v={{ segment.audio_version }}" download aria-label="{% trans 'Download fragment' %}">⇩</a>
+            <audio preload="metadata" src="{% url 'segment-editor-audio' project_id=project.id %}?segment={{ segment.position }}&amp;v={{ segment.audio_version }}"></audio>
+          </div>
+        {% elif segment.status == "skipped" %}
+          <p class="muted">{% trans "The phrase was manually marked as absent from the recording." %}</p>
+        {% else %}
+          <p class="error-box">{% trans "Phrase not found in the recording" %}</p>
+        {% endif %}
+        <div class="segment-actions">
+          <button
+            class="button secondary segment-edit-button"
+            type="button"
+            data-editor-url="{% url 'segment-editor-data' project_id=project.id position=segment.position %}"
+          >{% trans "Edit boundaries manually" %}</button>
+          <form method="post" enctype="multipart/form-data" action="{% url 'replace-segment-audio' project_id=project.id position=segment.position %}">
+            {% csrf_token %}
+            <label class="button secondary segment-replace-button">{% trans "Replace audio" %}
+              <input type="file" name="audio_file" accept="audio/*,.webm,.m4a,.ogg,.mp3,.wav,.flac" required onchange="this.form.submit()">
+            </label>
+          </form>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+
+{% if segments %}
+<div
+  id="segment-editor"
+  class="segment-editor"
+  hidden
+  data-loading-text="{% trans 'Loading audio editor…' %}"
+  data-processing-text="{% trans 'Saving' %}"
+  data-processing-wait="{% trans 'Please wait' %}"
+  data-apply-first="{% trans 'Apply the selected boundary before saving.' %}"
+  data-invalid-range="{% trans 'The beginning must be earlier than the end.' %}"
+  data-save-error="{% trans 'The changes could not be saved.' %}"
+  data-skip-confirm="{% trans 'Mark this phrase as absent from the recording and realign all following phrases?' %}"
+>
+  <div class="segment-editor-shade" aria-hidden="true"></div>
+  <section class="segment-editor-panel" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+    <header class="editor-header">
+      <div>
+        <p class="step">{% trans "Manual boundary editor" %}</p>
+        <h2 id="editor-title"></h2>
+      </div>
+      <button class="icon-button" id="editor-close" type="button" aria-label="{% trans 'Exit without saving' %}">×</button>
+    </header>
+    <p id="editor-phrase" class="editor-phrase"></p>
+    <div class="editor-context">
+      <p><strong>{% trans "Previous phrase" %}:</strong> <span id="editor-previous"></span></p>
+      <p><strong>{% trans "Next phrase" %}:</strong> <span id="editor-next"></span></p>
+    </div>
+    <div class="waveform-shell" id="waveform-shell">
+      <canvas id="waveform-canvas"></canvas>
+      <div class="waveform-cursor" aria-hidden="true"></div>
+      <div class="waveform-loading" id="waveform-loading">{% trans "Loading audio editor…" %}</div>
+    </div>
+    <div class="time-row">
+      <label for="editor-time">{% trans "Cursor position" %}</label>
+      <input id="editor-time" class="time-input" type="text" inputmode="decimal" value="00:00.000">
+      <span id="editor-selection-duration" class="muted"></span>
+    </div>
+    <div class="editor-toolbar" aria-label="{% trans 'Playback and navigation' %}">
+      <button class="icon-button" id="editor-play" type="button" aria-label="{% trans 'Play' %}">▶</button>
+      <button class="icon-button" id="editor-mute" type="button" aria-label="{% trans 'Mute' %}">🔊</button>
+      <input id="editor-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="{% trans 'Volume' %}">
+      <span class="toolbar-spacer"></span>
+      <button class="small-button" type="button" data-nudge="-1">−1 s</button>
+      <button class="small-button" type="button" data-nudge="-0.01">−0.01 s</button>
+      <button class="small-button" type="button" data-nudge="0.01">+0.01 s</button>
+      <button class="small-button" type="button" data-nudge="1">+1 s</button>
+      <button class="small-button" id="editor-zoom-out" type="button" aria-label="{% trans 'Zoom out' %}">−</button>
+      <button class="small-button" id="editor-zoom-in" type="button" aria-label="{% trans 'Zoom in' %}">+</button>
+    </div>
+    <div class="editor-actions boundary-actions">
+      <button class="button secondary" id="editor-set-start" type="button">{% trans "Set beginning" %}</button>
+      <button class="button secondary" id="editor-set-end" type="button">{% trans "Set end" %}</button>
+      <button class="button primary" id="editor-apply" type="button">{% trans "Apply" %}</button>
+      <button class="icon-button" id="editor-undo" type="button" aria-label="{% trans 'Undo' %}">↶</button>
+      <button class="icon-button" id="editor-redo" type="button" aria-label="{% trans 'Redo' %}">↷</button>
+    </div>
+    <p id="editor-message" class="editor-message" role="status"></p>
+    <footer class="editor-footer">
+      <button class="button danger-button" id="editor-skip" type="button">{% trans "Phrase is absent — skip" %}</button>
+      <span class="toolbar-spacer"></span>
+      <button class="button secondary" id="editor-cancel" type="button">{% trans "Exit without saving" %}</button>
+      <button class="button primary" id="editor-save" type="button">{% trans "Save and exit" %}</button>
+    </footer>
+    <audio id="editor-audio" preload="metadata"></audio>
+  </section>
+</div>
+<script src="{% static 'studio/segment_editor.js' %}"></script>
+{% endif %}
+<script src="{% static 'studio/segment_players.js' %}"></script>
+
+{% if project.processing_status == "queued" or project.processing_status == "processing" %}
+<script>
+(() => {
+  const panel = document.getElementById("processing-progress");
+  const stages = [...panel.querySelectorAll(".progress-stage")];
+  const current = document.getElementById("progress-current");
+
+  function renderProgress(data) {
+    stages.forEach((stage, index) => {
+      const marker = stage.querySelector(".progress-marker");
+      stage.classList.toggle("complete", index < data.stage_index);
+      stage.classList.toggle("active", index === data.stage_index && !data.complete && !data.failed);
+      marker.textContent = index < data.stage_index ? "✓" : (index === data.stage_index ? "●" : "○");
+    });
+    const active = stages[data.stage_index];
+    if (active && !data.complete && !data.failed) {
+      current.textContent = active.querySelector(".progress-label").textContent;
+    }
+  }
+
+  async function poll() {
+    try {
+      const response = await fetch(panel.dataset.statusUrl, {
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("Status request failed");
+      const data = await response.json();
+      renderProgress(data);
+      if (data.complete || data.failed) {
+        window.setTimeout(() => window.location.reload(), 500);
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+    window.setTimeout(poll, 1000);
+  }
+
+  renderProgress({stage_index: Number(panel.dataset.stageIndex), complete: false, failed: false});
+  window.setTimeout(poll, 500);
+})();
+</script>
+{% endif %}
+{% endblock %}

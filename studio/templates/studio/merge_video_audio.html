@@ -1,0 +1,68 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Combine video with audio — Voiceover Studio" %}{% endblock %}
+{% block navigation %}
+<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
+  <a class="button secondary" href="{% url 'tools-index' %}">{% trans "Back" %}</a>
+  <span></span>
+</nav>
+{% endblock %}
+{% block content %}
+<p class="eyebrow">{% trans "Tool 01" %}</p>
+<h1>{% trans "Combine video with audio" %}</h1>
+<p class="lead">{% trans "Upload a video and a new audio track. The result will keep the full video duration." %}</p>
+
+<section class="card">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <label for="id_video_file">{% trans "Source video" %}</label>
+    {{ form.video_file }}
+    {{ form.video_file.errors }}
+    <p class="muted field-note">{% trans "Accepted formats: MP4, WebM, MKV, MOV, AVI, and M4V." %}</p>
+
+    <label for="id_audio_file">{% trans "New audio track" %}</label>
+    {{ form.audio_file }}
+    {{ form.audio_file.errors }}
+    <p class="muted field-note">{% trans "Accepted formats: MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4, and MKV." %}</p>
+
+    <div class="toggle-card">
+      <label class="toggle-option" for="id_mix_original">
+        <span class="toggle">
+          {{ form.mix_original }}
+          <i aria-hidden="true"></i>
+        </span>
+        <span class="toggle-copy">
+          <strong>{% trans "Mix with the original sound" %}</strong>
+          <small>{{ form.mix_original.help_text }}</small>
+        </span>
+      </label>
+      {{ form.mix_original.errors }}
+      <p
+        class="mode-summary"
+        id="mode-summary"
+        data-replace="{% trans 'The original sound will be muted and replaced with the new track.' %}"
+        data-mix="{% trans 'The new track will play together with the original video sound.' %}"
+        aria-live="polite"
+      ></p>
+    </div>
+
+    <button class="button primary" type="submit">{% trans "Create video" %}</button>
+  </form>
+</section>
+
+<script>
+(() => {
+  const input = document.getElementById("id_mix_original");
+  const summary = document.getElementById("mode-summary");
+  function updateSummary() {
+    summary.textContent = input.checked
+      ? summary.dataset.mix
+      : summary.dataset.replace;
+  }
+  input.addEventListener("change", updateSummary);
+  updateSummary();
+})();
+</script>
+{% endblock %}

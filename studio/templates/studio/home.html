@@ -1,0 +1,26 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}Voiceover Studio<section class="card tools-entry">
+  <p class="eyebrow">{% trans "Individual operations" %}</p>
+  <h2>{% trans "Tools" %}</h2>
+  <p>{% trans "Combine video and audio or run another media operation without starting a complete voiceover project." %}</p>
+  <a class="button secondary" href="{% url 'tools-index' %}">{% trans "Open tools" %}</a>
+</section>
+{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">{% trans "Personal voiceover workflow" %}</p>
+  <h1>{% trans "Voiceover Studio" %}</h1>
+  <p class="lead">{% trans "Prepare a browser-generated or manually recorded voiceover, split it by video timecodes, and export either a finished video or an audio track for YouTube." %}</p>
+</section>
+<section class="card">
+  <h2>{% trans "How it works" %}</h2>
+  <ol>
+    <li>{% trans "Prepare the complete voiceover. You may record it with the Tab Sound Recorder extension and ChatGPT, or upload an audio file made independently." %}</li>
+    <li>{% trans "Upload the recording and the source video. The video is required so the studio can determine the exact duration of the final YouTube audio track." %}</li>
+    <li>{% trans "The next step will recognize the speech, find real pauses, remove pauses from fragment edges, and show the resulting fragments for review." %}</li>
+    <li>{% trans "Finally, choose whether to export a finished video or an audio-only track for an existing YouTube video." %}</li>
+  </ol>
+  <a class="button primary" href="{% url 'upload-audio' %}">{% trans "Start" %}</a>
+</section>
+{% endblock %}

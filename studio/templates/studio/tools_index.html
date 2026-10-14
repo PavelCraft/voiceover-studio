@@ -1,0 +1,24 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Tools — Voiceover Studio" %}{% endblock %}
+{% block navigation %}
+<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
+  <a class="button secondary" href="{% url 'home' %}">{% trans "Back" %}</a>
+  <span></span>
+</nav>
+{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">{% trans "Media utilities" %}</p>
+  <h1>{% trans "Tools" %}</h1>
+  <p class="lead">{% trans "Run individual audio and video operations without creating a voiceover project." %}</p>
+</section>
+<section class="tool-grid">
+  <article class="card tool-card">
+    <p class="tool-number">01</p>
+    <h2>{% trans "Combine video with audio" %}</h2>
+    <p>{% trans "Replace the original video sound with another track or mix both tracks together." %}</p>
+    <a class="button primary" href="{% url 'merge-video-audio' %}">{% trans "Open tool" %}</a>
+  </article>
+</section>
+{% endblock %}

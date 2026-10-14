@@ -1,0 +1,38 @@
+{% load i18n static %}
+{% get_current_language as CURRENT_LANGUAGE %}
+<!doctype html>
+<html lang="{{ CURRENT_LANGUAGE }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% trans "Voiceover Studio" %}{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'studio/style.css' %}">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="site-nav container" aria-label="{% trans 'Main navigation' %}">
+      <a class="site-brand" href="{% url 'home' %}">{% trans "Voiceover Studio" %}</a>
+      <div class="site-nav-links">
+        {% if user.is_authenticated %}
+          <a href="{% url 'dashboard' %}">{% trans "My projects" %}</a>
+          <a href="{% url 'tools-index' %}">{% trans "Tools" %}</a>
+          <a href="{% url 'users:password_change' %}">{% trans "Change password" %}</a>
+          <span class="nav-user">{{ user.username }}</span>
+          <form method="post" action="{% url 'users:logout' %}">
+            {% csrf_token %}
+            <button class="nav-button" type="submit">{% trans "Sign out" %}</button>
+          </form>
+        {% else %}
+          <a href="{% url 'users:login' %}">{% trans "Sign in" %}</a>
+          <a class="button primary" href="{% url 'users:register' %}">{% trans "Create account" %}</a>
+        {% endif %}
+      </div>
+    </nav>
+  </header>
+  <main class="container">
+    {% block navigation %}{% endblock %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

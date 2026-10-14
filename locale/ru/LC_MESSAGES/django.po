@@ -1,0 +1,658 @@
+msgid ""
+msgstr ""
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-01 22:17+0300\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#, fuzzy
+#| msgid "Voiceover Studio"
+msgid "Voiceover recording"
+msgstr "Студия озвучки"
+
+msgid "Text with video timecodes"
+msgstr "Текст с таймкодами видео"
+
+msgid "Or upload a TXT file"
+msgstr "Или загрузите файл TXT"
+
+#, python-format
+msgid "Unsupported audio format. Allowed formats: %(formats)s."
+msgstr "Неподдерживаемый формат аудио. Допустимые форматы: %(formats)s."
+
+msgid "Unsupported timecode format. Upload a TXT file."
+msgstr "Неподдерживаемый формат таймкодов. Загрузите файл TXT."
+
+msgid "Enter text with timecodes or upload a TXT file."
+msgstr "Введите текст с таймкодами или загрузите файл TXT."
+
+msgid "Video"
+msgstr "Видео"
+
+msgid "Export mode"
+msgstr "Режим экспорта"
+
+#, python-format
+msgid "Unsupported video format. Allowed formats: %(formats)s."
+msgstr "Неподдерживаемый формат видео. Допустимые форматы: %(formats)s."
+
+msgid "Source video"
+msgstr "Исходное видео"
+
+msgid "New audio track"
+msgstr "Новая аудиодорожка"
+
+msgid "Mix with the original sound"
+msgstr "Наложить поверх исходного звука"
+
+msgid ""
+"When enabled, both tracks will play together. When disabled, the original "
+"video sound will be muted."
+msgstr ""
+"Если включено, обе дорожки будут звучать одновременно. Если выключено, "
+"исходный звук видео будет заглушён."
+
+msgid "Video with the voiceover"
+msgstr "Видео с озвучкой"
+
+msgid "Audio track for YouTube"
+msgstr "Аудиодорожка для YouTube"
+
+msgid "Voiceover Studio"
+msgstr "Студия озвучки"
+
+msgid "Main navigation"
+msgstr "Основная навигация"
+
+msgid "My projects"
+msgstr "Мои проекты"
+
+msgid "Tools"
+msgstr "Инструменты"
+
+msgid "Change password"
+msgstr "Сменить пароль"
+
+msgid "Sign out"
+msgstr "Выйти"
+
+msgid "Sign in"
+msgstr "Войти"
+
+msgid "Create account"
+msgstr "Создать аккаунт"
+
+msgid "My projects — Voiceover Studio"
+msgstr "Мои проекты — Студия озвучки"
+
+msgid "Personal account"
+msgstr "Личный кабинет"
+
+msgid "New voiceover project"
+msgstr "Новый проект озвучки"
+
+msgid "Ready"
+msgstr "Готов"
+
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "Processing"
+msgstr "Обрабатывается"
+
+msgid "Draft"
+msgstr "Черновик"
+
+msgid "Export"
+msgstr "Экспорт"
+
+msgid "Fragments"
+msgstr "Фрагменты"
+
+msgid "Open project"
+msgstr "Открыть проект"
+
+msgid "Edit files"
+msgstr "Редактировать файлы"
+
+msgid "Delete"
+msgstr "Удалить"
+
+msgid "There are no projects yet"
+msgstr "Проектов пока нет"
+
+msgid "Create your first project to recognize, split and mount a voiceover."
+msgstr ""
+"Создайте первый проект, чтобы распознать, нарезать и смонтировать озвучку."
+
+msgid "Create project"
+msgstr "Создать проект"
+
+msgid "Delete project — Voiceover Studio"
+msgstr "Удаление проекта — Студия озвучки"
+
+msgid "Permanent deletion"
+msgstr "Безвозвратное удаление"
+
+msgid "Delete project?"
+msgstr "Удалить проект?"
+
+#, python-format
+msgid ""
+"The project “%(name)s” and all of its uploaded, intermediate and output "
+"files will be permanently deleted from this computer."
+msgstr ""
+"Проект «%(name)s», а также все загруженные, промежуточные и итоговые файлы "
+"будут безвозвратно удалены с этого компьютера."
+
+msgid "This action cannot be undone."
+msgstr "Это действие нельзя отменить."
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Delete project and files"
+msgstr "Удалить проект и файлы"
+
+msgid "Individual operations"
+msgstr "Отдельные операции"
+
+msgid ""
+"Combine video and audio or run another media operation without starting a "
+"complete voiceover project."
+msgstr ""
+"Объедините видео и аудио или выполните другую операцию с медиа без создания "
+"полного проекта озвучки."
+
+msgid "Open tools"
+msgstr "Открыть инструменты"
+
+msgid "Personal voiceover workflow"
+msgstr "Персональный процесс озвучки"
+
+msgid ""
+"Prepare a browser-generated or manually recorded voiceover, split it by "
+"video timecodes, and export either a finished video or an audio track for "
+"YouTube."
+msgstr ""
+"Подготовьте озвучку, записанную в браузере или вручную, разделите её по "
+"таймкодам видео и экспортируйте готовое видео или аудиодорожку для YouTube."
+
+msgid "How it works"
+msgstr "Как это работает"
+
+msgid ""
+"Prepare the complete voiceover. You may record it with the Tab Sound "
+"Recorder extension and ChatGPT, or upload an audio file made independently."
+msgstr ""
+"Подготовьте полную озвучку. Можно записать её с помощью расширения Tab Sound "
+"Recorder и ChatGPT или загрузить аудиофайл, созданный самостоятельно."
+
+msgid ""
+"Upload the recording and the source video. The video is required so the "
+"studio can determine the exact duration of the final YouTube audio track."
+msgstr ""
+"Загрузите запись и исходное видео. Видео необходимо, чтобы студия могла "
+"определить точную длительность итоговой аудиодорожки для YouTube."
+
+msgid ""
+"The next step will recognize the speech, find real pauses, remove pauses "
+"from fragment edges, and show the resulting fragments for review."
+msgstr ""
+"На следующем шаге речь будет распознана, реальные паузы найдены и удалены с "
+"краёв фрагментов, после чего фрагменты можно будет проверить."
+
+msgid ""
+"Finally, choose whether to export a finished video or an audio-only track "
+"for an existing YouTube video."
+msgstr ""
+"В конце выберите, экспортировать ли готовое видео или только аудиодорожку "
+"для уже загруженного видео на YouTube."
+
+msgid "Start"
+msgstr "Начать"
+
+msgid "Combine video with audio — Voiceover Studio"
+msgstr "Объединение видео с аудио — Студия озвучки"
+
+msgid "Step navigation"
+msgstr "Навигация по шагам"
+
+msgid "Back"
+msgstr "Назад"
+
+msgid "Tool 01"
+msgstr "Инструмент 01"
+
+msgid "Combine video with audio"
+msgstr "Объединить видео с аудио"
+
+msgid ""
+"Upload a video and a new audio track. The result will keep the full video "
+"duration."
+msgstr ""
+"Загрузите видео и новую аудиодорожку. Итоговый файл сохранит полную "
+"длительность видео."
+
+msgid "Accepted formats: MP4, WebM, MKV, MOV, AVI, and M4V."
+msgstr "Поддерживаемые форматы: MP4, WebM, MKV, MOV, AVI и M4V."
+
+msgid "Accepted formats: MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4, and MKV."
+msgstr ""
+"Поддерживаемые форматы: MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4 и MKV."
+
+msgid "The original sound will be muted and replaced with the new track."
+msgstr "Исходный звук будет заглушён и заменён новой дорожкой."
+
+msgid "The new track will play together with the original video sound."
+msgstr "Новая дорожка будет звучать одновременно с исходным звуком видео."
+
+msgid "Create video"
+msgstr "Создать видео"
+
+msgid "Video processing — Voiceover Studio"
+msgstr "Обработка видео — Студия озвучки"
+
+msgid "Audio"
+msgstr "Аудио"
+
+msgid "Mode"
+msgstr "Режим"
+
+msgid "Mix with original sound"
+msgstr "Наложение поверх исходного звука"
+
+msgid "Mute original sound"
+msgstr "Исходный звук заглушён"
+
+msgid "Creating the video"
+msgstr "Создаём видео"
+
+msgid "Processing is running…"
+msgstr "Идёт обработка…"
+
+msgid "You can leave this page and return later."
+msgstr "Можно покинуть эту страницу и вернуться позже."
+
+msgid "Processing error"
+msgstr "Ошибка обработки"
+
+msgid "Try again"
+msgstr "Попробовать снова"
+
+msgid "Video is ready"
+msgstr "Видео готово"
+
+msgid "The original video duration has been preserved."
+msgstr "Исходная длительность видео сохранена."
+
+msgid "Download video"
+msgstr "Скачать видео"
+
+msgid "Project — Voiceover Studio"
+msgstr "Проект — Студия озвучки"
+
+msgid "Files received"
+msgstr "Файлы получены"
+
+msgid "Project ready for processing"
+msgstr "Проект готов к обработке"
+
+msgid "Voiceover"
+msgstr "Озвучка"
+
+msgid "Timecodes"
+msgstr "Таймкоды"
+
+msgid "Entered manually"
+msgstr "Введены вручную"
+
+msgid "Building final result"
+msgstr ""
+
+msgid "Preparing voiceover"
+msgstr "Подготавливаем озвучку"
+
+msgid "Process again"
+msgstr "Обработать заново"
+
+msgid "Recognize and split audio"
+msgstr "Распознать и нарезать аудио"
+
+msgid "Result"
+msgstr "Результат"
+
+msgid "Download result"
+msgstr "Скачать результат"
+
+msgid "Voiceover fragments"
+msgstr "Фрагменты озвучки"
+
+msgid ""
+"Listen to every fragment. Low-confidence matches are highlighted and should "
+"be checked carefully."
+msgstr ""
+"Прослушайте каждый фрагмент. Совпадения с низкой уверенностью выделены — их "
+"нужно проверить особенно внимательно."
+
+msgid "When all fragments are correct, build the final audio track or video."
+msgstr ""
+
+msgid "Build final result"
+msgstr ""
+
+msgid "Match"
+msgstr "Совпадение"
+
+msgid "Speed"
+msgstr "Скорость"
+
+msgid "Replacement audio"
+msgstr "Заменяющее аудио"
+
+msgid "Play"
+msgstr "Воспроизвести"
+
+msgid "Playback position"
+msgstr "Позиция воспроизведения"
+
+msgid "Mute or unmute"
+msgstr "Включить или выключить звук"
+
+msgid "Download fragment"
+msgstr "Скачать фрагмент"
+
+msgid "The phrase was manually marked as absent from the recording."
+msgstr "Фраза вручную отмечена как отсутствующая в записи."
+
+msgid "Phrase not found in the recording"
+msgstr "Фраза не найдена в записи"
+
+msgid "Edit boundaries manually"
+msgstr "Редактировать границы вручную"
+
+msgid "Replace audio"
+msgstr "Заменить аудио"
+
+msgid "Loading audio editor…"
+msgstr "Загружаем редактор аудио…"
+
+msgid "Recalculating this phrase and following fragments…"
+msgstr "Пересчитываем эту и следующие фразы…"
+
+msgid "Apply the selected boundary before saving."
+msgstr "Примените выбранную границу перед сохранением."
+
+msgid "The beginning must be earlier than the end."
+msgstr "Начало должно находиться раньше конца."
+
+msgid "The changes could not be saved."
+msgstr "Не удалось сохранить изменения."
+
+msgid ""
+"Mark this phrase as absent from the recording and realign all following "
+"phrases?"
+msgstr ""
+"Отметить эту фразу как отсутствующую в записи и заново сопоставить все "
+"следующие фразы?"
+
+msgid "Manual boundary editor"
+msgstr "Ручной редактор границ"
+
+msgid "Exit without saving"
+msgstr "Выйти без сохранения"
+
+msgid "Previous phrase"
+msgstr "Предыдущая фраза"
+
+msgid "Next phrase"
+msgstr "Следующая фраза"
+
+msgid "Cursor position"
+msgstr "Позиция указателя"
+
+msgid "Playback and navigation"
+msgstr "Воспроизведение и навигация"
+
+msgid "Mute"
+msgstr "Выключить звук"
+
+msgid "Volume"
+msgstr "Громкость"
+
+msgid "Zoom out"
+msgstr "Уменьшить масштаб"
+
+msgid "Zoom in"
+msgstr "Увеличить масштаб"
+
+msgid "Set beginning"
+msgstr "Зафиксировать начало"
+
+msgid "Set end"
+msgstr "Зафиксировать конец"
+
+msgid "Apply"
+msgstr "Применить"
+
+msgid "Undo"
+msgstr "Отменить"
+
+msgid "Redo"
+msgstr "Повторить"
+
+msgid "Phrase is absent — skip"
+msgstr "Фразы нет в записи — пропустить"
+
+msgid "Save and exit"
+msgstr "Сохранить и выйти"
+
+msgid "Tools — Voiceover Studio"
+msgstr "Инструменты — Студия озвучки"
+
+msgid "Media utilities"
+msgstr "Работа с медиа"
+
+msgid ""
+"Run individual audio and video operations without creating a voiceover "
+"project."
+msgstr ""
+"Выполняйте отдельные операции с аудио и видео без создания проекта озвучки."
+
+msgid ""
+"Replace the original video sound with another track or mix both tracks "
+"together."
+msgstr "Замените исходный звук видео другой дорожкой или смешайте обе дорожки."
+
+msgid "Open tool"
+msgstr "Открыть инструмент"
+
+msgid "Upload voiceover — Voiceover Studio"
+msgstr "Загрузка озвучки — Студия озвучки"
+
+msgid "Forward"
+msgstr "Вперёд"
+
+msgid "Step 1 of 2"
+msgstr "Шаг 1 из 2"
+
+msgid "Add the voiceover"
+msgstr "Добавьте озвучку"
+
+msgid "Record with ChatGPT and Tab Sound Recorder"
+msgstr "Запись с помощью ChatGPT и Tab Sound Recorder"
+
+msgid "Open ChatGPT in the browser and send it the text that should be spoken."
+msgstr ""
+"Откройте ChatGPT в браузере и отправьте ему текст, который нужно озвучить."
+
+msgid ""
+"Ask ChatGPT to return the text as a message, without timecodes or any extra "
+"commentary."
+msgstr ""
+"Попросите ChatGPT вернуть этот текст сообщением, без таймкодов и "
+"дополнительных комментариев."
+
+msgid "Open the response containing only that text."
+msgstr "Откройте ответ, содержащий только этот текст."
+
+msgid ""
+"Before pressing ChatGPT’s “Read aloud” button, open Tab Sound Recorder and "
+"press “Start recording”."
+msgstr ""
+"Перед нажатием кнопки «Прочитать вслух» в ChatGPT откройте Tab Sound "
+"Recorder и нажмите «Начать запись»."
+
+msgid ""
+"Press “Read aloud” in ChatGPT and wait until the complete text has been read."
+msgstr ""
+"Нажмите «Прочитать вслух» в ChatGPT и дождитесь окончания чтения всего "
+"текста."
+
+msgid "Return to Tab Sound Recorder and press “Stop and save”."
+msgstr "Вернитесь в Tab Sound Recorder и нажмите «Остановить и сохранить»."
+
+msgid ""
+"You can also upload a recording made with any other tool. The studio does "
+"not require the browser extension."
+msgstr ""
+"Также можно загрузить запись, сделанную любым другим способом. Расширение "
+"браузера не является обязательным."
+
+msgid "Download Tab Sound Recorder from GitHub"
+msgstr "Скачать Tab Sound Recorder с GitHub"
+
+msgid "Upload a recording"
+msgstr "Загрузить запись"
+
+msgid ""
+"Enter the phrases with their target video start times or upload a TXT file. "
+"The text must be in the same language as the recording."
+msgstr ""
+"Введите фразы и время их начала в видео или загрузите TXT-файл. Текст должен "
+"быть на том же языке, что и запись."
+
+msgid "or"
+msgstr "или"
+
+msgid "Next"
+msgstr "Далее"
+
+msgid "Add video — Voiceover Studio"
+msgstr "Добавление видео — Студия озвучки"
+
+msgid "Step 2 of 2"
+msgstr "Шаг 2 из 2"
+
+msgid "Add the source video"
+msgstr "Добавьте исходное видео"
+
+msgid ""
+"The video is required even if you want only an audio file. Voiceover Studio "
+"uses its exact duration to create an audio track that lines up with the "
+"video on YouTube."
+msgstr ""
+"Видео необходимо даже в том случае, если вам нужна только аудиодорожка. "
+"Студия озвучки использует его точную длительность, чтобы синхронизировать "
+"аудио с видео на YouTube."
+
+msgid "Continue"
+msgstr "Продолжить"
+
+msgid "Sign in — Voiceover Studio"
+msgstr "Вход — Студия озвучки"
+
+msgid "Account"
+msgstr "Аккаунт"
+
+msgid "No account yet?"
+msgstr "Ещё нет аккаунта?"
+
+msgid "Create one"
+msgstr "Создать аккаунт"
+
+msgid "Change password — Voiceover Studio"
+msgstr "Смена пароля — Студия озвучки"
+
+msgid "Save new password"
+msgstr "Сохранить новый пароль"
+
+msgid "Create account — Voiceover Studio"
+msgstr "Создание аккаунта — Студия озвучки"
+
+msgid "Already registered?"
+msgstr "Уже зарегистрированы?"
+
+msgid "Preparing audio"
+msgstr "Подготавливаем аудио"
+
+msgid "Recognizing speech with Groq"
+msgstr "Распознаём речь с помощью Groq"
+
+msgid "Matching phrases with recognized words"
+msgstr "Сопоставляем фразы с распознанными словами"
+
+msgid "Detecting pauses"
+msgstr "Ищем паузы"
+
+msgid "Cutting and fitting fragments"
+msgstr "Нарезаем и подгоняем фрагменты"
+
+msgid "Rendering the result with FFmpeg"
+msgstr "Собираем результат с помощью FFmpeg"
+
+msgid "Files uploaded. You can start processing."
+msgstr "Файлы загружены. Можно запускать обработку."
+
+msgid "Processing started. You may leave this page and return later."
+msgstr "Обработка запущена. Можно покинуть эту страницу и вернуться позже."
+
+msgid "Processing is already running."
+msgstr "Обработка уже выполняется."
+
+msgid "Process and review the fragments first."
+msgstr "Сначала обработайте и проверьте фрагменты."
+
+msgid "Final rendering started. You may leave this page and return later."
+msgstr "Финальная сборка запущена. Можно покинуть эту страницу и вернуться позже."
+
+msgid "Select an audio file to replace the fragment."
+msgstr "Выберите аудиофайл для замены фрагмента."
+
+msgid "The fragment audio has been replaced."
+msgstr "Аудио фрагмента заменено."
+
+msgid "Invalid editor data."
+msgstr "Некорректные данные редактора."
+
+msgid "Select the beginning and end of the phrase."
+msgstr "Выберите начало и конец фразы."
+
+msgid "The selected phrase boundaries are invalid."
+msgstr "Выбранные границы фразы некорректны."
+
+msgid "Wait until project processing is complete before deleting it."
+msgstr "Дождитесь окончания обработки проекта перед удалением."
+
+msgid "The project and all its files were deleted."
+msgstr "Проект и все его файлы удалены."
+
+msgid "Checking the uploaded files"
+msgstr "Проверяем загруженные файлы"
+
+msgid "Combining video and audio with FFmpeg"
+msgstr "Объединяем видео и аудио с помощью FFmpeg"
+
+msgid "Preparing the result for download"
+msgstr "Подготавливаем результат к скачиванию"
+
+msgid "Email"
+msgstr ""
+
+msgid "Saving"
+msgstr "Сохраняем"
+
+msgid "Please wait"
+msgstr "Пожалуйста, подождите"

@@ -1,0 +1,48 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "My projects — Voiceover Studio" %}{% endblock %}
+{% block content %}
+<div class="dashboard-heading">
+  <div>
+    <p class="step">{% trans "Personal account" %}</p>
+    <h1>{% trans "My projects" %}</h1>
+  </div>
+  <a class="button primary" href="{% url 'upload-audio' %}">{% trans "New voiceover project" %}</a>
+</div>
+{% for message in messages %}<div class="notice{% if message.tags == 'error' %} error-box{% endif %}">{{ message }}</div>{% endfor %}
+{% if projects %}
+<div class="project-list">
+  {% for project in projects %}
+  <article class="card project-card">
+    <div class="project-card-main">
+      <div>
+        <h2>{{ project.audio_name }}</h2>
+        <p class="muted">{{ project.created_at|date:"d.m.Y H:i" }} · {{ project.video_name }}</p>
+      </div>
+      <span class="project-status status-{{ project.processing_status }}">
+        {% if project.processing_status == "complete" %}{% trans "Ready" %}
+        {% elif project.processing_status == "failed" %}{% trans "Error" %}
+        {% elif project.processing_status == "processing" or project.processing_status == "queued" %}{% trans "Processing" %}
+        {% else %}{% trans "Draft" %}{% endif %}
+      </span>
+    </div>
+    <dl class="project-details">
+      <dt>{% trans "Export" %}</dt><dd>{{ project.get_output_mode_display }}</dd>
+      <dt>{% trans "Fragments" %}</dt><dd>{{ project.segments.count }}</dd>
+    </dl>
+    <div class="project-actions">
+      <a class="button primary" href="{% url 'project-summary' project_id=project.id %}">{% trans "Open project" %}</a>
+      <a class="button secondary" href="{% url 'edit-audio' project_id=project.id %}">{% trans "Edit files" %}</a>
+      <a class="button danger-button" href="{% url 'delete-project' project_id=project.id %}">{% trans "Delete" %}</a>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<section class="card empty-state">
+  <h2>{% trans "There are no projects yet" %}</h2>
+  <p class="muted">{% trans "Create your first project to recognize, split and mount a voiceover." %}</p>
+  <a class="button primary" href="{% url 'upload-audio' %}">{% trans "Create project" %}</a>
+</section>
+{% endif %}
+{% endblock %}

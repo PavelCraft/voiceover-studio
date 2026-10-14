@@ -1,0 +1,114 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Video processing — Voiceover Studio" %}{% endblock %}
+{% block navigation %}
+<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
+  <a class="button secondary" href="{% url 'merge-video-audio' %}">{% trans "Back" %}</a>
+  <span></span>
+</nav>
+{% endblock %}
+{% block content %}
+<p class="eyebrow">{% trans "Tool 01" %}</p>
+<h1>{% trans "Combine video with audio" %}</h1>
+
+<section class="card">
+  <dl class="summary">
+    <dt>{% trans "Video" %}</dt><dd>{{ job.video_name }}</dd>
+    <dt>{% trans "Audio" %}</dt><dd>{{ job.audio_name }}</dd>
+    <dt>{% trans "Mode" %}</dt>
+    <dd>{% if job.mix_original %}{% trans "Mix with original sound" %}{% else %}{% trans "Mute original sound" %}{% endif %}</dd>
+  </dl>
+</section>
+
+{% if job.processing_status == "queued" or job.processing_status == "processing" %}
+<section
+  class="card progress-panel"
+  id="processing-progress"
+  data-status-url="{% url 'merge-video-audio-status' job_id=job.id %}"
+  data-stage-index="{{ processing_stage_index }}"
+  aria-live="polite"
+>
+  <h2>{% trans "Creating the video" %}</h2>
+  <p id="progress-current">{% trans "Processing is running…" %}</p>
+  <p class="muted">{% trans "You can leave this page and return later." %}</p>
+  <ol class="progress-stage-list">
+    {% for step_label in processing_steps %}
+    <li class="progress-stage" data-stage-index="{{ forloop.counter0 }}">
+      <span class="progress-marker" aria-hidden="true">○</span>
+      <span class="progress-label">{{ step_label }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+
+{% if job.processing_status == "failed" %}
+<section class="card error-box">
+  <h2>{% trans "Processing error" %}</h2>
+  <p>{{ job.processing_error }}</p>
+  <a class="button secondary" href="{% url 'merge-video-audio' %}">{% trans "Try again" %}</a>
+</section>
+{% endif %}
+
+{% if job.processing_status == "complete" and output_url %}
+<section class="card">
+  <h2>{% trans "Video is ready" %}</h2>
+  <p>{% trans "The original video duration has been preserved." %}</p>
+  <a class="button primary" href="{{ output_url }}" download>{% trans "Download video" %}</a>
+</section>
+{% endif %}
+
+{% if job.processing_status == "queued" or job.processing_status == "processing" %}
+<script>
+(() => {
+  const panel = document.getElementById("processing-progress");
+  const stages = [...panel.querySelectorAll(".progress-stage")];
+  const current = document.getElementById("progress-current");
+
+  function renderProgress(data) {
+    stages.forEach((stage, index) => {
+      const marker = stage.querySelector(".progress-marker");
+      stage.classList.toggle("complete", index < data.stage_index);
+      stage.classList.toggle(
+        "active",
+        index === data.stage_index && !data.complete && !data.failed
+      );
+      marker.textContent = index < data.stage_index
+        ? "✓"
+        : (index === data.stage_index ? "●" : "○");
+    });
+    const active = stages[data.stage_index];
+    if (active && !data.complete && !data.failed) {
+      current.textContent = active.querySelector(".progress-label").textContent;
+    }
+  }
+
+  async function poll() {
+    try {
+      const response = await fetch(panel.dataset.statusUrl, {
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("Status request failed");
+      const data = await response.json();
+      renderProgress(data);
+      if (data.complete || data.failed) {
+        window.setTimeout(() => window.location.reload(), 500);
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+    window.setTimeout(poll, 1000);
+  }
+
+  renderProgress({
+    stage_index: Number(panel.dataset.stageIndex),
+    complete: false,
+    failed: false
+  });
+  window.setTimeout(poll, 500);
+})();
+</script>
+{% endif %}
+{% endblock %}

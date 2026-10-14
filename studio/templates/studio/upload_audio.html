@@ -1,0 +1,46 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Upload voiceover — Voiceover Studio" %}{% endblock %}
+{% block navigation %}
+<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
+  <a class="button secondary" href="{% url 'home' %}">{% trans "Back" %}</a>
+  {% if project %}<a class="button secondary" href="{% url 'upload-video' project_id=project.id %}">{% trans "Forward" %}</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endblock %}
+{% block content %}
+<p class="step">{% trans "Step 1 of 2" %}</p>
+<h1>{% trans "Add the voiceover" %}</h1>
+<section class="card instructions">
+  <h2>{% trans "Record with ChatGPT and Tab Sound Recorder" %}</h2>
+  <ol>
+    <li>{% trans "Open ChatGPT in the browser and send it the text that should be spoken." %}</li>
+    <li>{% trans "Ask ChatGPT to return the text as a message, without timecodes or any extra commentary." %}</li>
+    <li>{% trans "Open the response containing only that text." %}</li>
+    <li>{% trans "Before pressing ChatGPT’s “Read aloud” button, open Tab Sound Recorder and press “Start recording”." %}</li>
+    <li>{% trans "Press “Read aloud” in ChatGPT and wait until the complete text has been read." %}</li>
+    <li>{% trans "Return to Tab Sound Recorder and press “Stop and save”." %}</li>
+  </ol>
+  <p>{% trans "You can also upload a recording made with any other tool. The studio does not require the browser extension." %}</p>
+  <p><a href="https://github.com/PavelCraft/tab-sound-recorder" target="_blank" rel="noopener noreferrer">{% trans "Download Tab Sound Recorder from GitHub" %}</a></p>
+</section>
+<section class="card">
+  <h2>{% trans "Upload a recording" %}</h2>
+  <p class="muted">{% trans "Accepted formats: MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4, and MKV." %}</p>
+  <p class="muted">{% trans "Enter the phrases with their target video start times or upload a TXT file. The text must be in the same language as the recording." %}</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <label for="id_audio_file">{% trans "Voiceover recording" %}</label>
+    {{ form.audio_file }}
+    {{ form.audio_file.errors }}
+    <label for="id_timecodes_text">{% trans "Text with video timecodes" %}</label>
+    {{ form.timecodes_text }}
+    {{ form.timecodes_text.errors }}
+    <p class="or-divider">{% trans "or" %}</p>
+    <label for="id_timecodes_file">{% trans "Or upload a TXT file" %}</label>
+    {{ form.timecodes_file }}
+    {{ form.timecodes_file.errors }}
+    <button class="button primary" type="submit">{% trans "Next" %}</button>
+  </form>
+</section>
+{% endblock %}
