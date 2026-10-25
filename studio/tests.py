@@ -1370,6 +1370,29 @@ class MediaToolsTests(TransactionTestCase):
         self.assertNotContains(response, "coming-soon")
         self.assertContains(response, "Сценарии")
 
+    def test_language_switcher_changes_language_and_keeps_current_page(self):
+        response = self.client.post(
+            "/i18n/setlang/",
+            {"language": "en", "next": "/tools/"},
+        )
+        self.assertRedirects(response, "/tools/", fetch_redirect_response=False)
+        self.assertEqual(response.cookies[settings.LANGUAGE_COOKIE_NAME].value, "en")
+
+        response = self.client.get("/tools/")
+        self.assertContains(response, 'value="en" title="English" aria-pressed="true" class="active"')
+        self.assertContains(response, ">Tools<")
+
+        response = self.client.post(
+            "/i18n/setlang/",
+            {"language": "ru", "next": "/tools/"},
+        )
+        self.assertRedirects(response, "/tools/", fetch_redirect_response=False)
+        self.assertEqual(response.cookies[settings.LANGUAGE_COOKIE_NAME].value, "ru")
+
+        response = self.client.get("/tools/")
+        self.assertContains(response, 'value="ru" title="Русский" aria-pressed="true" class="active"')
+        self.assertContains(response, ">Инструменты<")
+
     def test_each_media_tool_has_a_working_form(self):
         for slug in (
             "replace-fragment",

@@ -51,7 +51,15 @@
       <header class="app-topbar">
         <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
         <span class="topbar-title">{% block topbar_title %}{% trans "Creative workspace" %}{% endblock %}</span>
-        <span class="local-badge"><i></i>{% trans "Local processing" %}</span>
+        <div class="topbar-actions">
+          <form class="language-switcher" action="{% url 'set_language' %}" method="post" aria-label="Language / Язык">
+            {% csrf_token %}
+            <input name="next" type="hidden" value="{{ request.get_full_path }}">
+            <button type="submit" name="language" value="ru" title="Русский" aria-pressed="{% if CURRENT_LANGUAGE == 'ru' %}true{% else %}false{% endif %}"{% if CURRENT_LANGUAGE == 'ru' %} class="active"{% endif %}>RU</button>
+            <button type="submit" name="language" value="en" title="English" aria-pressed="{% if CURRENT_LANGUAGE == 'en' %}true{% else %}false{% endif %}"{% if CURRENT_LANGUAGE == 'en' %} class="active"{% endif %}>EN</button>
+          </form>
+          <span class="local-badge"><i></i>{% trans "Local processing" %}</span>
+        </div>
       </header>
       <main class="workspace {% block workspace_class %}{% endblock %}">{% block navigation %}{% endblock %}{% block content %}{% endblock %}</main>
     </div>
