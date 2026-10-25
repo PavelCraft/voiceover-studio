@@ -1,15 +1,3 @@
-{% extends "studio/base.html" %}
-{% load i18n %}
-{% block title %}{% trans "Create account — Voiceover Studio" %}{% endblock %}
-{% block content %}
-<section class="auth-card card">
-  <p class="step">{% trans "Account" %}</p>
-  <h1>{% trans "Create account" %}</h1>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button class="button primary" type="submit">{% trans "Create account" %}</button>
-  </form>
-  <p class="muted">{% trans "Already registered?" %} <a href="{% url 'users:login' %}">{% trans "Sign in" %}</a></p>
-</section>
-{% endblock %}
+{% extends "studio/base.html" %}{% load i18n %}
+{% block title %}{% trans "Create account — Voiceover Studio" %}{% endblock %}{% block topbar_title %}{% trans "Account" %}{% endblock %}
+{% block content %}<section class="auth-layout"><div class="auth-intro"><p class="eyebrow"><span></span>{% trans "Start creating" %}</p><h1>{% trans "Your voiceover workspace" %}</h1><p class="lead">{% trans "Keep projects, processing states and finished files together." %}</p><div class="auth-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><section class="auth-card card"><p class="step">{% trans "New account" %}</p><h2>{% trans "Create account" %}</h2><form method="post">{% csrf_token %}{{ form.as_p }}<button class="button primary" type="submit">{% trans "Create account" %}</button></form><p class="muted">{% trans "Already registered?" %} <a href="{% url 'users:login' %}">{% trans "Sign in" %}</a></p></section></section>{% endblock %}

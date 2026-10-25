@@ -1,0 +1,19 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Phrase timing — Voiceover Studio" %}{% endblock %}
+{% block topbar_title %}{% trans "Phrase timing" %}{% endblock %}
+{% block navigation %}<nav class="workflow-nav timing-start-navigation"><a href="{% url 'tools-index' %}">← {% trans "All tools" %}</a><span>{% trans "The original media remains unchanged" %}</span></nav>{% endblock %}
+{% block content %}
+<div class="page-heading compact timing-heading"><div><p class="eyebrow"><span></span>{% trans "Media and script" %}</p><h1>{% trans "Phrase timing" %}</h1><p class="lead">{% trans "Assign timecodes to phrases while playing video or audio and export the finished script." %}</p></div><span class="timing-heading-mark"><i>00:18</i><b>→</b><i>Aa</i></span></div>
+
+<div class="work-layout timing-start-layout">
+  <section class="card work-card">
+    <div class="card-heading"><span class="heading-icon violet-icon"><svg viewBox="0 0 24 24"><path d="M5 6h14M7 10h7M7 14h10M7 18h5M4 4v16"/></svg></span><div><p class="step">{% trans "Source files" %}</p><h2>{% trans "Prepare the phrase list" %}</h2><p>{% trans "Line breaks are kept. Sentences can also be divided automatically before marking." %}</p></div></div>
+    <form class="studio-form timing-start-form" method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.non_field_errors }}
+      {% include "studio/includes/phrase_timing_setup_fields.html" with form=form %}
+      <div class="form-footer timing-submit-footer"><span class="timing-submit-note" data-timing-submit-note data-manual="{% trans 'The manual timing editor will open immediately.' %}" data-automatic="{% trans 'Speech recognition will start. The editor will open automatically when the timecodes are ready.' %}"><i></i><span>{% trans "The manual timing editor will open immediately." %}</span></span><button class="button primary" type="submit" data-timing-submit data-manual="{% trans 'Open manual timing' %}" data-automatic="{% trans 'Recognize speech and create timecodes' %}"><span>{% trans "Open manual timing" %}</span><b>→</b></button></div>
+    </form>
+  </section>
+  <aside class="context-panel timing-start-guide"><section class="timing-workflow-guide" data-timing-guide="manual"><p class="section-kicker">{% trans "Manual workflow" %}</p><h3>{% trans "When you need to place the voiceover yourself" %}</h3><p class="timing-workflow-fit">{% trans "Best for a video without finished speech, or when the existing speech does not provide useful timing." %}</p><ol class="prototype-flow"><li><i>1</i><span>{% trans "Add video or audio and the voiceover text" %}</span></li><li><i>2</i><span>{% trans "Click “Open manual timing”" %}</span></li><li><i>3</i><span>{% trans "Watch the media and mark the moment when each phrase should begin. End timecodes are optional." %}</span></li><li><i>4</i><span>{% trans "Review the result and export TXT, SRT or VTT" %}</span></li></ol></section><section class="timing-workflow-guide" data-timing-guide="automatic" hidden><p class="section-kicker">{% trans "Automatic workflow" %}</p><h3>{% trans "When the required speech is already in the media" %}</h3><p class="timing-workflow-fit">{% trans "Best when most phrases are spoken at approximately the right moments and you want to obtain their actual boundaries." %}</p><ol class="prototype-flow"><li><i>1</i><span>{% trans "Add video or audio with speech" %}</span></li><li><i>2</i><span>{% trans "Click “Recognize speech and create timecodes”" %}</span></li><li><i>3</i><span>{% trans "Wait for recognition — the editor will open automatically" %}</span></li><li><i>4</i><span>{% trans "Use the quick review to check the detected boundaries, correct them if needed and export" %}</span></li></ol></section></aside>
+</div>
+{% endblock %}

@@ -1,29 +1,25 @@
 {% extends "studio/base.html" %}
 {% load i18n %}
 {% block title %}{% trans "Add video — Voiceover Studio" %}{% endblock %}
-{% block navigation %}
-<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
-  <a class="button secondary" href="{% url 'edit-audio' project_id=project.id %}">{% trans "Back" %}</a>
-  {% if project.video_file %}<a class="button secondary" href="{% url 'project-summary' project_id=project.id %}">{% trans "Forward" %}</a>{% else %}<span></span>{% endif %}
-</nav>
-{% endblock %}
+{% block topbar_title %}{% trans "Voiceover project" %}{% endblock %}
+{% block workspace_class %}workflow-workspace{% endblock %}
+{% block navigation %}<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}"><a href="{% url 'edit-audio' project_id=project.id %}">← {% trans "Back to voiceover" %}</a><span class="workflow-nav-actions"><span>{% trans "Draft saved automatically" %}</span>{% if project.video_file %}<a href="{% url 'project-summary' project_id=project.id %}">{% trans "Go to review" %} →</a>{% endif %}</span></nav>{% endblock %}
 {% block content %}
-<p class="step">{% trans "Step 2 of 2" %}</p>
-<h1>{% trans "Add the source video" %}</h1>
-<section class="card">
-  <p>{% trans "The video is required even if you want only an audio file. Voiceover Studio uses its exact duration to create an audio track that lines up with the video on YouTube." %}</p>
-  <p class="muted">{% trans "Accepted formats: MP4, WebM, MKV, MOV, AVI, and M4V." %}</p>
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    <label for="id_video_file">{% trans "Source video" %}</label>
-    {{ form.video_file }}
-    {{ form.video_file.errors }}
-    <fieldset>
-      <legend>{% trans "Export mode" %}</legend>
-      {{ form.output_mode }}
-    </fieldset>
-    <button class="button primary" type="submit">{% trans "Continue" %}</button>
-  </form>
-</section>
+<header class="workflow-header"><div><p class="eyebrow"><span></span>{% trans "Guided workflow" %}</p><h1>{% trans "Voice a finished video" %}</h1></div><ol class="workflow-steps"><li class="complete"><i>✓</i><span>{% trans "Voiceover and script" %}</span></li><li class="active"><i>2</i><span>{% trans "Video and export" %}</span></li><li><i>3</i><span>{% trans "Review" %}</span></li></ol></header>
+<div class="work-layout">
+  <section class="card work-card">
+    <div class="card-heading"><span class="heading-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM10 9l5 3-5 3z"/></svg></span><div><p class="step">{% trans "Step 2 of 2" %}</p><h2>{% trans "Add the source video" %}</h2><p>{% trans "The video sets the exact duration and timing of the final result." %}</p></div></div>
+    <form method="post" enctype="multipart/form-data" class="studio-form">
+      {% csrf_token %}{{ form.non_field_errors }}
+      <div class="field-block"><div class="field-title"><label for="id_video_file">{% trans "Source video" %}</label><span>{% trans "Required" %}</span></div><div class="file-drop video-drop">{{ form.video_file }}<span class="file-drop-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM10 9l5 3-5 3z"/></svg></span><strong>{% trans "Choose a video file" %}</strong><small>{% trans "MP4, WebM, MKV, MOV, AVI or M4V" %}</small></div>{{ form.video_file.errors }}</div>
+      <fieldset class="choice-field"><legend>{% trans "What should be exported?" %}</legend>{{ form.output_mode }}</fieldset>
+      <fieldset class="choice-field" id="audio-format-field"><legend>{% trans "Audio format" %}</legend>{{ form.export_format }}</fieldset>
+      <div class="toggle-card"><label class="toggle-option"><span class="toggle">{{ form.normalize_loudness }}<i></i></span><span class="toggle-copy"><strong>{{ form.normalize_loudness.label }}</strong><small>{{ form.normalize_loudness.help_text }}</small></span></label></div>
+      <div class="field-block"><div class="field-title">{{ form.speed_warning_threshold.label_tag }}</div>{{ form.speed_warning_threshold }}<p class="field-help">{{ form.speed_warning_threshold.help_text }}</p>{{ form.speed_warning_threshold.errors }}</div>
+      <div class="field-block"><div class="field-title">{{ form.retention_days.label_tag }}</div>{{ form.retention_days }}<p class="field-help">{{ form.retention_days.help_text }}</p>{{ form.retention_days.errors }}</div>
+      <div class="form-footer"><a class="button secondary" href="{% url 'edit-audio' project_id=project.id %}">{% trans "Back" %}</a><button class="button primary" type="submit">{% trans "Continue to review before processing" %} <b>→</b></button></div>
+    </form>
+  </section>
+  <aside class="context-panel"><section><p class="section-kicker">{% trans "Why the video is needed" %}</p><p>{% trans "Even for audio-only export, the studio uses the exact video duration so the track lines up on YouTube." %}</p></section><section class="file-ready"><i>✓</i><span><strong>{% trans "Voiceover added" %}</strong><small>{{ project.audio_name }}</small></span></section></aside>
+</div>
 {% endblock %}

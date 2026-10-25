@@ -1,0 +1,19 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Multilingual localization — Voiceover Studio" %}{% endblock %}
+{% block topbar_title %}{% trans "Localization project" %}{% endblock %}
+{% block navigation %}<nav class="workflow-nav"><a href="{% url 'project-scenario-select' %}">← {% trans "Choose another workflow" %}</a></nav>{% endblock %}
+{% block content %}
+<header class="workflow-header"><div><p class="eyebrow"><span></span>{% trans "Multilingual workflow" %}</p><h1>{% trans "Localize into several languages" %}</h1></div><ol class="workflow-steps four-steps"><li class="active"><i>1</i><span>{% trans "Source" %}</span></li><li><i>2</i><span>{% trans "Languages" %}</span></li><li><i>3</i><span>{% trans "Review" %}</span></li><li><i>4</i><span>{% trans "Export" %}</span></li></ol></header>
+<div class="work-layout"><section class="card work-card"><div class="card-heading"><span class="heading-icon violet-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM10 9l5 3-5 3z"/></svg></span><div><p class="step">{% trans "Step 1 of 4" %}</p><h2>{% trans "Add the source materials" %}</h2><p>{% trans "One video and source script will become the basis for every language version." %}</p></div></div>
+  <form class="studio-form prototype-form" method="post" enctype="multipart/form-data">{% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="prototype-upload-grid"><div class="field-block"><div class="field-title"><label for="{{ form.source_video.id_for_label }}">{{ form.source_video.label }}</label><span>{% trans "Required" %}</span></div>{{ form.source_video }}{{ form.source_video.errors }}</div><div class="field-block"><div class="field-title"><label for="{{ form.source_script.id_for_label }}">{{ form.source_script.label }}</label><span>TXT, SRT, VTT, CSV</span></div>{{ form.source_script }}{{ form.source_script.errors }}</div></div>
+    <div class="field-block"><label for="{{ form.source_script_text.id_for_label }}">{{ form.source_script_text.label }}</label>{{ form.source_script_text }}{{ form.source_script_text.errors }}</div>
+    <div class="field-block"><label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>{{ form.title }}</div>
+    <fieldset class="choice-field"><legend>{{ form.languages.label }}</legend><div class="language-picker">{% for choice in form.languages %}<label>{{ choice.tag }}<span>{{ choice.choice_label }}</span></label>{% endfor %}</div>{{ form.languages.errors }}</fieldset>
+    <div class="toggle-card"><label class="toggle-option"><span class="toggle">{{ form.copy_settings }}<i></i></span><span class="toggle-copy"><strong>{{ form.copy_settings.label }}</strong><small>{% trans "You can still adjust each version separately during review." %}</small></span></label></div>
+    <div class="form-footer"><span><i></i>{% trans "The project will keep each language version separately" %}</span><button class="button primary" type="submit">{% trans "Create localization project" %} <b>→</b></button></div>
+  </form>
+</section><aside class="context-panel"><section><p class="section-kicker">{% trans "The result" %}</p><ul class="check-list"><li>{% trans "Separate text and audio for every language" %}</li><li>{% trans "Independent review of problem phrases" %}</li><li>{% trans "Batch export with consistent file names" %}</li></ul></section></aside></div>
+{% endblock %}

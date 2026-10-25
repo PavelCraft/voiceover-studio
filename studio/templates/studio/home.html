@@ -1,26 +1,28 @@
 {% extends "studio/base.html" %}
 {% load i18n %}
-{% block title %}Voiceover Studio<section class="card tools-entry">
-  <p class="eyebrow">{% trans "Individual operations" %}</p>
-  <h2>{% trans "Tools" %}</h2>
-  <p>{% trans "Combine video and audio or run another media operation without starting a complete voiceover project." %}</p>
-  <a class="button secondary" href="{% url 'tools-index' %}">{% trans "Open tools" %}</a>
-</section>
-{% endblock %}
+{% block title %}{% trans "Voiceover Studio" %}{% endblock %}
+{% block topbar_title %}{% trans "Workflows" %}{% endblock %}
 {% block content %}
-<section class="hero">
-  <p class="eyebrow">{% trans "Personal voiceover workflow" %}</p>
-  <h1>{% trans "Voiceover Studio" %}</h1>
-  <p class="lead">{% trans "Prepare a browser-generated or manually recorded voiceover, split it by video timecodes, and export either a finished video or an audio track for YouTube." %}</p>
+<section class="studio-hero">
+  <div><p class="eyebrow"><span></span>{% trans "Voice production workspace" %}</p><h1>{% trans "What do you want to create?" %}</h1><p class="lead">{% trans "Choose a guided workflow for a complete result or open a single-purpose media tool." %}</p></div>
+  {% if user.is_authenticated %}<a class="button quiet" href="{% url 'dashboard' %}">{% trans "View all projects" %} <span>→</span></a>{% endif %}
 </section>
-<section class="card">
-  <h2>{% trans "How it works" %}</h2>
-  <ol>
-    <li>{% trans "Prepare the complete voiceover. You may record it with the Tab Sound Recorder extension and ChatGPT, or upload an audio file made independently." %}</li>
-    <li>{% trans "Upload the recording and the source video. The video is required so the studio can determine the exact duration of the final YouTube audio track." %}</li>
-    <li>{% trans "The next step will recognize the speech, find real pauses, remove pauses from fragment edges, and show the resulting fragments for review." %}</li>
-    <li>{% trans "Finally, choose whether to export a finished video or an audio-only track for an existing YouTube video." %}</li>
-  </ol>
-  <a class="button primary" href="{% url 'upload-audio' %}">{% trans "Start" %}</a>
+<section class="launcher-section">
+  <div class="section-heading"><div><p class="section-kicker">{% trans "Project workflows" %}</p><h2>{% trans "A guided path to a finished result" %}</h2></div><span class="count-badge">03</span></div>
+  <div class="workflow-selection-grid home-workflow-grid">
+    <a class="workflow-choice" href="{% url 'upload-audio' %}"><span class="choice-number">01</span><span class="heading-icon"><svg viewBox="0 0 24 24"><path d="M4 12h2l2-5 3 10 3-8 2 3h4M5 20h14"/></svg></span><span class="status-chip available">{% trans "Available" %}</span><h2>{% trans "Voice a finished video" %}</h2><p>{% trans "Align a ready voiceover with a video, review phrases and export the final result." %}</p><span class="choice-steps"><i>{% trans "Video" %}</i><b>→</b><i>{% trans "Timecodes" %}</i><b>→</b><i>{% trans "Voiceover" %}</i><b>→</b><i>{% trans "Review" %}</i></span><strong>{% trans "Start project" %} →</strong></a>
+    <a class="workflow-choice" href="{% url 'localization-scenario' %}"><span class="choice-number">02</span><span class="heading-icon violet-icon"><svg viewBox="0 0 24 24"><path d="M5 6h14M8 4v2c0 5 3 9 8 12M16 6c-1 4-4 8-8 11M15 15h5M17.5 12v6"/></svg></span><span class="status-chip available">{% trans "Available" %}</span><h2>{% trans "Localize into several languages" %}</h2><p>{% trans "Manage several language versions of one video and export them as a complete set." %}</p><span class="choice-steps"><i>{% trans "Source" %}</i><b>→</b><i>{% trans "Languages" %}</i><b>→</b><i>{% trans "Export" %}</i></span><strong>{% trans "Open workflow" %} →</strong></a>
+    <a class="workflow-choice" href="{% url 'takes-scenario' %}"><span class="choice-number">03</span><span class="heading-icon amber-icon"><svg viewBox="0 0 24 24"><path d="M6 7h3v10H6zM11 5h3v14h-3zM16 8h3v8h-3z"/></svg></span><span class="status-chip available">{% trans "Available" %}</span><h2>{% trans "Assemble voiceover from takes" %}</h2><p>{% trans "Find repeated takes, compare them phrase by phrase and assemble the best version." %}</p><span class="choice-steps"><i>{% trans "Materials" %}</i><b>→</b><i>{% trans "Takes" %}</i><b>→</b><i>{% trans "Assembly" %}</i></span><strong>{% trans "Open workflow" %} →</strong></a>
+  </div>
+</section>
+<section class="launcher-section tool-launcher">
+  <div class="section-heading"><div><p class="section-kicker">{% trans "Quick tools" %}</p><h2>{% trans "One task, without creating a project" %}</h2></div><a href="{% url 'tools-index' %}">{% trans "All tools" %} →</a></div>
+  <div class="home-tool-grid">
+    <a class="mini-tool-card" href="{% url 'merge-video-audio' %}"><span class="tool-icon teal"><svg viewBox="0 0 24 24"><path d="M4 7h10v10H4zM14 10h6v7h-6M8 11h2M9 10v2"/></svg></span><span><strong>{% trans "Combine video with audio" %}</strong><small>{% trans "Replace the original sound or mix two tracks." %}</small></span><b>→</b></a>
+    <a class="mini-tool-card" href="{% url 'transcribe-audio' %}"><span class="tool-icon blue"><svg viewBox="0 0 24 24"><path d="M5 5h9M5 9h14M5 13h11M5 17h7M18 15v5M15.5 17.5h5"/></svg></span><span><strong>{% trans "Audio to text" %}</strong><small>{% trans "Get readable text with punctuation and paragraphs." %}</small></span><b>→</b></a>
+    <a class="mini-tool-card" href="{% url 'tool-prototype' tool_slug='split-phrases' %}"><span class="tool-icon violet"><svg viewBox="0 0 24 24"><path d="M5 5v14M19 5v14M8 9h8M8 15h8M10 7v4M14 13v4"/></svg></span><span><strong>{% trans "Split voiceover into phrases" %}</strong><small>{% trans "Prepare a neatly named set of separate phrases." %}</small></span><b>→</b></a>
+    <a class="mini-tool-card" href="{% url 'tool-prototype' tool_slug='fit-subtitles' %}"><span class="tool-icon amber"><svg viewBox="0 0 24 24"><path d="M4 8h12M4 12h9M4 16h11M18 6v12M16 9l2-2 2 2"/></svg></span><span><strong>{% trans "Fit audio to subtitles" %}</strong><small>{% trans "Place a ready voiceover into SRT or VTT intervals." %}</small></span><b>→</b></a>
+    <a class="mini-tool-card" href="{% url 'tool-prototype' tool_slug='prepare-voiceover' %}"><span class="tool-icon rose"><svg viewBox="0 0 24 24"><path d="M4 12h3l2-5 3 10 3-8 2 3h3M5 19h14"/></svg></span><span><strong>{% trans "Prepare voiceover" %}</strong><small>{% trans "Trim edges, even out loudness and soften transitions." %}</small></span><b>→</b></a>
+  </div>
 </section>
 {% endblock %}

@@ -1,0 +1,41 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Audio to text — Voiceover Studio" %}{% endblock %}
+{% block topbar_title %}{% trans "Audio to text" %}{% endblock %}
+{% block navigation %}<nav class="workflow-nav"><a href="{% url 'tools-index' %}">← {% trans "All tools" %}</a><span>{% trans "The original file remains unchanged" %}</span></nav>{% endblock %}
+{% block content %}
+<div class="page-heading compact transcription-heading"><div><p class="eyebrow"><span></span>{% trans "Speech recognition" %}</p><h1>{% trans "Audio to text" %}</h1><p class="lead">{% trans "Get a clean, readable transcript from audio or video — with punctuation, paragraphs and your terminology." %}</p></div><span class="transcription-format"><i>Ab</i><b>→</b><i>TXT</i></span></div>
+
+<div class="work-layout transcription-layout">
+  <section class="card work-card">
+    <div class="card-heading"><span class="heading-icon blue-icon"><svg viewBox="0 0 24 24"><path d="M5 5h9M5 9h14M5 13h11M5 17h7M18 15v5M15.5 17.5h5"/></svg></span><div><p class="step">{% trans "Source and text style" %}</p><h2>{% trans "Prepare the transcript" %}</h2><p>{% trans "Choose a file and how carefully the result should be formatted." %}</p></div></div>
+    <form class="studio-form transcription-form" method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.non_field_errors }}
+      <div class="field-block"><div class="field-title"><label for="{{ form.media.id_for_label }}">{% trans "Audio or video" %}</label><span>{% trans "Required" %}</span></div><label class="file-drop transcription-drop">{{ form.media }}<span class="file-drop-icon blue-file"><svg viewBox="0 0 24 24"><path d="M12 16V5M8 9l4-4 4 4M5 15v4h14v-4"/></svg></span><strong>{% trans "Choose an audio or video file" %}</strong><small>MP3, WAV, M4A, FLAC, OGG, MP4, WebM, MKV</small></label>{{ form.media.errors }}</div>
+
+      <div class="transcription-basics"><label><span>{{ form.language.label }}</span>{{ form.language }}</label><label><span>{{ form.export_format.label }}</span>{{ form.export_format }}</label></div>
+
+      <fieldset class="transcription-mode"><legend>{% trans "Text formatting" %}</legend><div class="transcription-mode-grid"><label><input type="radio" name="transcription_mode" value="accurate"{% if form.transcription_mode.value == 'accurate' %} checked{% endif %}><span class="mode-mark"><i>Aa</i></span><span><strong>{% trans "Accurate transcript" %}</strong><small>{% trans "Preserves the recognized wording with only basic punctuation." %}</small></span></label><label class="recommended"><input type="radio" name="transcription_mode" value="readable"{% if form.transcription_mode.value != 'accurate' %} checked{% endif %}><span class="mode-mark"><i>¶</i></span><span><strong>{% trans "Readable text" %}<em>{% trans "Recommended" %}</em></strong><small>{% trans "Adds careful punctuation and divides the speech into meaningful paragraphs without rewriting it." %}</small></span></label></div>{{ form.transcription_mode.errors }}</fieldset>
+
+      <div class="field-block"><div class="field-title"><label for="{{ form.terms.id_for_label }}">{% trans "Names and special terms" %}</label><span>{% trans "Optional" %}</span></div><p class="field-help">{% trans "Add names, brands, abbreviations or professional terms that must be recognized correctly." %}</p>{{ form.terms }}</div>
+
+      <div class="operation-checklist transcription-options"><label>{{ form.divide_paragraphs }}<span><strong>{% trans "Divide into paragraphs" %}</strong><small>{% trans "Use meaning and natural pauses in speech" %}</small></span></label><label>{{ form.preserve_wording }}<span><strong>{% trans "Preserve speaker wording" %}</strong><small>{% trans "Do not paraphrase, shorten or add words" %}</small></span></label></div>
+
+      <div class="form-footer"><span><i></i>{% trans "Timecodes are kept internally but will not clutter the text" %}</span><button class="button primary transcription-start" type="submit">{% trans "Transcribe" %} <b>→</b></button></div>
+    </form>
+  </section>
+
+  <aside class="context-panel transcription-context"><section><p class="section-kicker">{% trans "The result" %}</p><ul class="check-list"><li>{% trans "Punctuation and capital letters" %}</li><li>{% trans "Paragraphs instead of a wall of text" %}</li><li>{% trans "Copying and export in one click" %}</li></ul></section><section><p class="section-kicker">{% trans "Two text styles" %}</p><p><strong>{% trans "Accurate" %}</strong><br>{% trans "As close as possible to the recognized speech." %}</p><p><strong>{% trans "Readable" %}</strong><br>{% trans "Additional punctuation and paragraphs without changing the meaning." %}</p></section></aside>
+</div>
+
+<section class="card transcription-result" aria-live="polite"{% if job and job.processing_status != 'complete' and job.processing_status != 'failed' %} id="transcription-job" data-status-url="{% url 'media-tool-status' job_id=job.id %}"{% endif %}>
+  <header><div><p class="section-kicker">{% trans "Transcript" %}</p><h2>{% trans "Result text" %}</h2></div>{% if not job or job.processing_status != 'complete' %}<div class="transcript-actions"><button type="button" disabled><svg viewBox="0 0 24 24"><path d="M8 8h11v11H8zM5 16H4V5h11v1"/></svg>{% trans "Copy" %}</button><button type="button" disabled><svg viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg>{% trans "Download" %}</button></div>{% endif %}</header>
+  {% if job and job.processing_status == 'complete' %}
+  {% if job.result_manifest.warning %}<p class="notice">{% trans "The accurate transcript was saved because additional formatting could not be safely applied." %}</p>{% endif %}
+  <textarea id="transcript-text" class="transcript-editor" spellcheck="true">{{ job.result_manifest.text }}</textarea>
+  <div class="transcript-result-footer"><button class="button secondary" id="copy-transcript" type="button">{% trans "Copy text" %}</button><form method="post" action="{% url 'download-transcription' job_id=job.id export_format='txt' %}">{% csrf_token %}<input type="hidden" name="text"><button class="button secondary" type="submit">{% trans "Download TXT" %}</button></form><form method="post" action="{% url 'download-transcription' job_id=job.id export_format='docx' %}">{% csrf_token %}<input type="hidden" name="text"><button class="button primary" type="submit">{% trans "Download DOCX" %}</button></form></div>
+  {% elif job and job.processing_status == 'failed' %}<div class="transcript-empty"><div><strong>{% trans "Transcription failed" %}</strong><p>{{ job.processing_error }}</p></div></div>
+  {% elif job %}<div class="transcript-empty"><span class="text-cursor" aria-hidden="true"></span><div><strong>{% trans "Recognizing and formatting speech…" %}</strong><p id="transcription-step">{{ job.processing_step }}</p></div></div>
+  {% else %}<div class="transcript-empty"><span class="text-cursor" aria-hidden="true"></span><div><strong>{% trans "The recognized text will appear here" %}</strong><p>{% trans "You will be able to edit it, copy it or download it as a document." %}</p></div></div>{% endif %}
+</section>
+{% if job and job.processing_status == 'complete' %}<script>const editor=document.getElementById('transcript-text');document.getElementById('copy-transcript').addEventListener('click',async()=>{await navigator.clipboard.writeText(editor.value)});document.querySelectorAll('.transcript-result-footer form').forEach(form=>form.addEventListener('submit',()=>{form.querySelector('input[name=text]').value=editor.value}))</script>{% elif job and job.processing_status != 'failed' %}<script>const job=document.getElementById('transcription-job');const poll=()=>fetch(job.dataset.statusUrl).then(r=>r.json()).then(data=>{if(data.complete||data.failed)location.reload();else{document.getElementById('transcription-step').textContent=data.step;setTimeout(poll,1200)}}).catch(()=>setTimeout(poll,2500));poll()</script>{% endif %}
+{% endblock %}

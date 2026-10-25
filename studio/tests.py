@@ -7,12 +7,191 @@ from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.template import Context, Template
 from django.test import Client, SimpleTestCase, TransactionTestCase, override_settings
 from django.utils import translation
 
-from .models import ManualSegmentBoundary, Project, Segment, SegmentReplacement, VideoAudioMergeJob
+from .forms import PhraseTimingToolForm
+
+from .models import (
+    BillingAccount, LocalizationProject, ManualSegmentBoundary, MediaToolInput, MediaToolJob, PhraseTimingProject, ProcessingJob,
+    Project, Segment, SegmentReplacement, TakeCandidate, TakePhrase,
+    TakeRecording, TakesProject, UsageRecord, VideoAudioMergeJob,
+)
+from .services.job_queue import execute_job
 from .services.media_tools import merge_video_with_audio
+from .services.phrase_timing import (
+    build_phrases, clamp_phrases_to_duration, process_phrase_timing_project,
+    speech_intervals, uncovered_speech_intervals,
+)
+from .services.reprocessing import (
+    build_change_plan, remap_project_annotations,
+)
+from .services.storage import StorageLimitError, reserve_storage
+from .services.tool_processing import build_docx_bytes, process_media_tool_job
 from .services.voiceover import align_entries, parse_timecodes, snap_boundaries
+from voiceover_core.timing import (
+    estimate_speech_duration, export_timed_phrases, format_editable_timing_text, parse_editable_timing_text,
+    reconcile_phrase_texts, split_script,
+)
+
+
+class PhraseTimingCoreTests(SimpleTestCase):
+    def test_reprocessing_plan_distinguishes_timing_text_and_structure(self):
+        original = [
+            {"text": "Первая", "start": 0.0, "end": 2.0},
+            {"text": "Вторая", "start": 2.0, "end": 4.0},
+        ]
+
+        timing = build_change_plan(original, [
+            {"text": "Первая", "start": 0.0, "end": 2.5},
+            {"text": "Вторая", "start": 2.5, "end": 4.0},
+        ])
+        text_plan = build_change_plan(original, [
+            {"text": "Первая исправлена", "start": 0.0, "end": 2.0},
+            {"text": "Вторая", "start": 2.0, "end": 4.0},
+        ])
+        structure = build_change_plan(original, [
+            {"text": "Первая", "start": 0.0, "end": 2.0},
+            {"text": "Вставка", "start": 2.0, "end": 2.5},
+            {"text": "Вторая", "start": 2.5, "end": 4.0},
+        ])
+        text_and_timing = build_change_plan(original, [
+            {"text": "Первая исправлена", "start": 0.0, "end": 2.5},
+            {"text": "Вторая", "start": 2.5, "end": 4.0},
+        ])
+
+        self.assertEqual(timing["kind"], "timing")
+        self.assertEqual(timing["positions"], [1, 2])
+        self.assertEqual(text_plan["kind"], "text")
+        self.assertEqual(text_plan["from_position"], 1)
+        self.assertEqual(text_and_timing["kind"], "timing")
+        self.assertEqual(structure["kind"], "structure")
+        self.assertEqual(structure["from_position"], 2)
+
+    def test_recognition_rounding_is_clamped_to_media_duration(self):
+        phrases = clamp_phrases_to_duration([
+            {
+                "id": 1, "text": "Фраза", "start": 17.3, "end": 18.02,
+                "end_explicit": True,
+                "words": [{"text": "Фраза", "start": 17.3, "end": 18.02}],
+            },
+        ], 18.0)
+        self.assertEqual(phrases[0]["end"], 18.0)
+        self.assertEqual(phrases[0]["words"][0]["end"], 18.0)
+
+    def test_automatic_phrases_keep_word_boundaries_and_explicit_ends(self):
+        result = build_phrases({
+            "words": [
+                {"word": "Первая", "start": 1.0, "end": 1.4},
+                {"word": " фраза.", "start": 1.45, "end": 2.0},
+                {"word": "Вторая", "start": 2.8, "end": 3.2},
+                {"word": " фраза", "start": 3.25, "end": 3.8},
+            ],
+            "segments": [],
+        })
+        self.assertEqual([item["text"] for item in result], ["Первая фраза.", "Вторая фраза"])
+        self.assertEqual(result[0]["start"], 1.0)
+        self.assertEqual(result[0]["end"], 2.0)
+        self.assertTrue(result[0]["end_explicit"])
+        self.assertEqual(len(result[0]["words"]), 2)
+
+    def test_vad_reports_only_voice_not_covered_by_recognized_words(self):
+        result = uncovered_speech_intervals(
+            [(0.0, 1.0), (2.0, 3.0)],
+            [{"start": 0.0, "end": 1.0}],
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["kind"], "unrecognized_speech")
+        self.assertAlmostEqual(result[0]["start"], 2.0)
+
+    def test_silero_probabilities_use_hysteresis_and_ignore_short_noise(self):
+        probabilities = [0.0] * 4 + [0.8] * 20 + [0.0] * 8 + [0.8] * 2 + [0.0] * 8
+        result = speech_intervals(probabilities, len(probabilities) * 512)
+        self.assertEqual(len(result), 1)
+
+    def test_plain_script_is_split_by_lines_and_sentence_endings(self):
+        self.assertEqual(
+            split_script("Первая фраза. Вторая фраза!\nТретья строка"),
+            ["Первая фраза.", "Вторая фраза!", "Третья строка"],
+        )
+
+    def test_resegmenting_retains_first_timecode_when_phrase_is_split(self):
+        result = reconcile_phrase_texts(
+            [{"text": "Первая часть и вторая часть", "start": 3.25}],
+            "Первая часть.\nИ вторая часть",
+        )
+        self.assertEqual(result[0]["start"], 3.25)
+        self.assertIsNone(result[1]["start"])
+
+    def test_timed_phrases_export_to_srt(self):
+        content = export_timed_phrases([
+            {"text": "Первая", "start": 1.25},
+            {"text": "Вторая", "start": 3.5},
+        ], "srt", duration=8)
+        self.assertIn("00:00:01,250 --> 00:00:03,500", content)
+        self.assertIn("Вторая", content)
+
+    def test_unmarked_phrases_can_be_merged_into_previous_exported_phrase(self):
+        content = export_timed_phrases([
+            {"text": "Первая", "start": 1.0},
+            {"text": "без отдельного таймкода", "start": None},
+            {"text": "Третья", "start": 6.0},
+        ], "srt", duration=10, include_unmarked=True)
+        self.assertIn("Первая без отдельного таймкода", content)
+        self.assertIn("00:00:01,000 --> 00:00:06,000", content)
+        self.assertIn("Третья", content)
+
+    def test_leading_unmarked_phrase_blocks_export(self):
+        items = [
+            {"text": "Вступление без таймкода", "start": None},
+            {"text": "Первая размеченная", "start": 2.0},
+        ]
+        for include_unmarked in (False, True):
+            with self.assertRaisesRegex(ValueError, "first phrase"):
+                export_timed_phrases(items, "vtt", duration=8, include_unmarked=include_unmarked)
+
+    def test_editable_text_shows_only_assigned_timecodes_and_parses_changes(self):
+        editable = format_editable_timing_text([
+            {"text": "Первая", "start": 3.696},
+            {"text": "Вторая", "start": None},
+        ])
+        self.assertEqual(editable, "[00:03.696] Первая\nВторая")
+        parsed = parse_editable_timing_text("[00:04.125] Первая исправлена\nВторая", duration=12)
+        self.assertEqual(parsed[0]["start"], 4.125)
+        self.assertIsNone(parsed[1]["start"])
+
+    def test_editable_timecodes_must_stay_in_order(self):
+        with self.assertRaisesRegex(ValueError, "ordered"):
+            parse_editable_timing_text("[00:08.000] Первая\n[00:02.000] Вторая")
+
+    def test_explicit_phrase_end_survives_editing_and_export(self):
+        editable = format_editable_timing_text([
+            {"text": "Первая", "start": 1.0, "end": 3.25, "end_explicit": True},
+            {"text": "Вторая", "start": 5.0, "end": 8.0, "end_explicit": False},
+        ])
+        self.assertEqual(editable, "[00:01.000 --> 00:03.250] Первая\n[00:05.000] Вторая")
+        parsed = parse_editable_timing_text(editable, duration=8)
+        self.assertTrue(parsed[0]["end_explicit"])
+        self.assertEqual(parsed[0]["end"], 3.25)
+        content = export_timed_phrases(parsed, "srt", duration=8)
+        self.assertIn("00:00:01,000 --> 00:00:03,250", content)
+
+    def test_explicit_phrase_end_can_overlap_the_next_phrase(self):
+        parsed = parse_editable_timing_text(
+            "[00:01.000 --> 00:06.000] Первая\n[00:05.000 --> 00:07.000] Вторая",
+            duration=8,
+        )
+        self.assertEqual(parsed[0]["end"], 6.0)
+        self.assertEqual(parsed[1]["start"], 5.0)
+
+    def test_speech_estimate_does_not_treat_domain_dots_as_pauses(self):
+        phrase = (
+            "В этом видео я покажу несколько способов, как можно заблокировать "
+            "раздражающие элементы с помощью этого расширения на примере сайта "
+            "mail.ru и почты mail.ru."
+        )
+        self.assertAlmostEqual(estimate_speech_duration(phrase), 9.18, places=1)
 
 
 class AlignmentTests(SimpleTestCase):
@@ -158,6 +337,32 @@ class AlignmentTests(SimpleTestCase):
         self.assertEqual(snapped[1]["audio_start"], 11.0)
 
 
+class StorageQuotaTests(TransactionTestCase):
+    def test_media_limit_counts_files_and_active_reservations(self):
+        with tempfile.TemporaryDirectory() as media_root:
+            Path(media_root, "existing.bin").write_bytes(b"x" * 200)
+            with override_settings(
+                MEDIA_ROOT=media_root,
+                VOICEOVER_DISK_CHECK_PATH=media_root,
+                VOICEOVER_MEDIA_LIMIT_BYTES=500,
+                VOICEOVER_DISK_RESERVE_BYTES=0,
+            ):
+                reserve_storage("first", 100)
+                with self.assertRaises(StorageLimitError):
+                    reserve_storage("second", 250)
+
+    def test_disk_reserve_is_checked_before_reserving_work(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(
+            MEDIA_ROOT=media_root,
+            VOICEOVER_DISK_CHECK_PATH=media_root,
+            VOICEOVER_MEDIA_LIMIT_BYTES=10_000,
+            VOICEOVER_DISK_RESERVE_BYTES=800,
+        ), patch("studio.services.storage.shutil.disk_usage") as usage:
+            usage.return_value.free = 1_000
+            with self.assertRaises(StorageLimitError):
+                reserve_storage("too-large", 250)
+
+
 class WorkflowTests(TransactionTestCase):
     def setUp(self):
         self.client = Client(HTTP_HOST="localhost", HTTP_ACCEPT_LANGUAGE="ru")
@@ -174,16 +379,17 @@ class WorkflowTests(TransactionTestCase):
 
     def test_navigation_and_progress_page(self):
         with translation.override("ru"):
+            source_html = self.client.get("/start/voiceover/").content.decode()
             audio_html = self.client.get(
                 f"/project/{self.project.id}/audio/"
             ).content.decode()
             video_html = self.client.get(
                 f"/project/{self.project.id}/video/"
             ).content.decode()
-            self.assertIn("Назад", audio_html)
-            self.assertIn("Вперёд", audio_html)
-            self.assertIn("Назад", video_html)
-            self.assertIn("Вперёд", video_html)
+            self.assertIn("Выйти из сценария", source_html)
+            self.assertIn("Исходное видео", source_html)
+            self.assertIn("таймкод", audio_html.lower())
+            self.assertIn("Исходное видео", video_html)
 
             self.project.processing_status = "processing"
             self.project.processing_step = "detecting"
@@ -200,7 +406,315 @@ class WorkflowTests(TransactionTestCase):
         with patch("studio.views.start_project_worker", return_value=True) as worker:
             response = self.client.post(f"/project/{self.project.id}/process/")
         self.assertEqual(response.status_code, 302)
-        worker.assert_called_once_with(self.project, clear_manual_boundaries=True)
+        worker.assert_called_once_with(self.project)
+
+    def test_processed_project_without_changes_does_not_start_again(self):
+        Segment.objects.create(
+            project=self.project, position=1, text="Тест", video_start=0,
+            video_end=2, audio_file="jobs/test/segments/001.wav", status="ok",
+        )
+        self.project.processing_status = "complete"
+        self.project.pending_reprocessing = {}
+        self.project.save(update_fields=["processing_status", "pending_reprocessing"])
+
+        with patch("studio.views.start_project_worker") as worker:
+            response = self.client.post(f"/project/{self.project.id}/process/")
+
+        self.assertEqual(response.status_code, 302)
+        worker.assert_not_called()
+        page = self.client.get(f"/project/{self.project.id}/")
+        self.assertNotContains(page, "Распознать и нарезать аудио")
+        self.assertNotContains(page, "Обработать заново")
+
+    def test_processing_minutes_are_not_limited_or_recorded(self):
+        BillingAccount.objects.create(owner=self.user, monthly_minutes=0, extra_minutes=0)
+        job = ProcessingJob.objects.create(
+            project=self.project,
+            kind=ProcessingJob.KIND_PROCESS,
+            status="running",
+            payload={},
+        )
+        with patch("studio.services.job_queue.process_project") as process:
+            execute_job(job)
+        process.assert_called_once_with(
+            self.project,
+            reuse_transcription=False,
+            realign_from_position=None,
+            preserve_following=True,
+            timing_only_positions=None,
+        )
+        job.refresh_from_db()
+        self.assertEqual(job.status, "complete")
+        self.assertFalse(UsageRecord.objects.filter(job=job).exists())
+
+    def test_timing_only_change_uses_saved_alignment_without_groq_files(self):
+        self.project.pending_reprocessing = {
+            "kind": "timing", "from_position": 1, "positions": [1],
+        }
+        self.project.save(update_fields=["pending_reprocessing"])
+        Segment.objects.create(
+            project=self.project, position=1, text="Тест", video_start=0,
+            video_end=2, audio_file="jobs/test/segments/001.wav", status="ok",
+        )
+        with tempfile.TemporaryDirectory() as media_root:
+            work_dir = Path(media_root) / "jobs" / str(self.project.id)
+            work_dir.mkdir(parents=True)
+            (work_dir / "alignment.json").write_text("[]", encoding="utf-8")
+            with override_settings(MEDIA_ROOT=media_root), patch(
+                "studio.views.start_project_worker", return_value=True,
+            ) as worker:
+                response = self.client.post(f"/project/{self.project.id}/process/")
+
+        self.assertEqual(response.status_code, 302)
+        worker.assert_called_once_with(self.project, timing_only_positions=[1])
+
+    def test_text_and_structure_changes_reuse_saved_transcription(self):
+        with tempfile.TemporaryDirectory() as media_root:
+            work_dir = Path(media_root) / "jobs" / str(self.project.id)
+            work_dir.mkdir(parents=True)
+            transcription = work_dir / "transcription.json"
+            transcription.write_text('{"words": []}', encoding="utf-8")
+            (work_dir / "source-44100.wav").write_bytes(b"audio")
+            self.project.transcription_file = transcription.relative_to(media_root).as_posix()
+            self.project.transcription_audio_revision = self.project.audio_revision
+
+            for kind, preserve in (("text", True), ("structure", False)):
+                self.project.pending_reprocessing = {
+                    "kind": kind, "from_position": 3, "positions": [3],
+                }
+                self.project.save(update_fields=[
+                    "transcription_file", "transcription_audio_revision",
+                    "pending_reprocessing",
+                ])
+                with override_settings(MEDIA_ROOT=media_root), patch(
+                    "studio.views.start_project_worker", return_value=True,
+                ) as worker:
+                    response = self.client.post(f"/project/{self.project.id}/process/")
+                self.assertEqual(response.status_code, 302)
+                worker.assert_called_once_with(
+                    self.project,
+                    reuse_transcription=True,
+                    realign_from_position=3,
+                    preserve_following=preserve,
+                )
+
+    def test_phrase_insertion_remaps_manual_boundary_and_single_replacement(self):
+        old_phrases = [
+            {"text": "Первая"}, {"text": "Вторая"}, {"text": "Третья"},
+        ]
+        new_phrases = [
+            {"text": "Первая"}, {"text": "Вставка"},
+            {"text": "Вторая"}, {"text": "Третья"},
+        ]
+        ManualSegmentBoundary.objects.create(
+            project=self.project, position=3, audio_start=3.0, audio_end=4.0,
+        )
+        SegmentReplacement.objects.create(
+            project=self.project, position=2, audio_file="jobs/test/replacement.wav",
+        )
+
+        remap_project_annotations(self.project, old_phrases, new_phrases)
+
+        self.assertTrue(self.project.manual_boundaries.filter(position=4).exists())
+        self.assertTrue(self.project.segment_replacements.filter(position=3).exists())
+
+    def test_stale_project_cannot_be_rendered(self):
+        Segment.objects.create(
+            project=self.project, position=1, text="Тест", video_start=0,
+            video_end=2, audio_file="jobs/test/segments/001.wav", status="ok",
+        )
+        self.project.processing_status = "stale"
+        self.project.pending_reprocessing = {
+            "kind": "text", "from_position": 1, "positions": [1],
+        }
+        self.project.save(update_fields=["processing_status", "pending_reprocessing"])
+
+        with patch("studio.views.start_project_render_worker") as worker:
+            response = self.client.post(f"/project/{self.project.id}/render/")
+
+        self.assertEqual(response.status_code, 302)
+        worker.assert_not_called()
+        page = self.client.get(f"/project/{self.project.id}/")
+        self.assertNotContains(page, "Собрать итоговый результат")
+
+    def test_saved_workflow_steps_are_navigation_and_keep_project_data(self):
+        timing = PhraseTimingProject.objects.create(
+            owner=self.user,
+            video_file=self.project.video_file.name,
+            mode=PhraseTimingProject.MODE_AUTOMATIC,
+            phrases=[{"id": 1, "text": "Тест", "start": 0.0, "end": 1.0}],
+            video_duration=1.0,
+        )
+        self.project.timing_project = timing
+        self.project.save(update_fields=["timing_project"])
+        before = {
+            "video": self.project.video_file.name,
+            "audio": self.project.audio_file.name,
+            "timecodes": self.project.timecodes_text,
+            "timing": self.project.timing_project_id,
+        }
+
+        with translation.override("ru"):
+            source = self.client.get(f"/project/{self.project.id}/video/")
+            timing_page = self.client.get(f"/project/{self.project.id}/timing/")
+            voiceover = self.client.get(f"/project/{self.project.id}/audio/")
+            review = self.client.get(f"/project/{self.project.id}/")
+
+        self.assertContains(source, f"/project/{self.project.id}/timing/")
+        self.assertContains(timing_page, "Открыть сохранённые таймкоды")
+        self.assertContains(timing_page, f"/project/{self.project.id}/audio/")
+        self.assertContains(voiceover, "Перейти к проверке перед обработкой")
+        self.assertContains(review, "Проверка перед обработкой")
+        self.assertContains(review, "Созданы автоматически")
+        self.assertNotContains(review, "Введены вручную")
+
+        self.project.refresh_from_db()
+        after = {
+            "video": self.project.video_file.name,
+            "audio": self.project.audio_file.name,
+            "timecodes": self.project.timecodes_text,
+            "timing": self.project.timing_project_id,
+        }
+        self.assertEqual(after, before)
+
+    def test_saving_unchanged_completed_steps_does_not_reset_later_progress(self):
+        timing = PhraseTimingProject.objects.create(
+            owner=self.user,
+            video_file=self.project.video_file.name,
+            mode=PhraseTimingProject.MODE_AUTOMATIC,
+            phrases=[{"id": 1, "text": "Тест", "start": 0.0, "end": 1.0}],
+            video_duration=1.0,
+        )
+        self.project.timing_project = timing
+        self.project.processing_status = "complete"
+        self.project.output_file = "jobs/test/output/result.m4a"
+        self.project.export_manifest = {"srt": "jobs/test/output/result.srt"}
+        self.project.save(update_fields=[
+            "timing_project", "processing_status", "output_file", "export_manifest",
+        ])
+
+        source = self.client.post(
+            f"/project/{self.project.id}/video/",
+            {
+                "output_mode": self.project.output_mode,
+                "export_format": self.project.export_format,
+                "normalize_loudness": "on",
+                "speed_warning_threshold": str(self.project.speed_warning_threshold),
+                "retention_days": str(self.project.retention_days),
+            },
+        )
+        self.assertRedirects(
+            source,
+            f"/project/{self.project.id}/timing/",
+            fetch_redirect_response=False,
+        )
+        voiceover = self.client.post(f"/project/{self.project.id}/audio/", {})
+        self.assertRedirects(
+            voiceover,
+            f"/project/{self.project.id}/",
+            fetch_redirect_response=False,
+        )
+
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.timing_project_id, timing.id)
+        self.assertEqual(self.project.timecodes_text, "00:00 - Тест")
+        self.assertEqual(self.project.processing_status, "complete")
+        self.assertEqual(self.project.output_file, "jobs/test/output/result.m4a")
+        self.assertEqual(self.project.export_manifest, {"srt": "jobs/test/output/result.srt"})
+
+    def test_voiceover_workflow_reuses_phrase_timing_editor(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            source = self.client.post(
+                "/start/voiceover/",
+                {
+                    "video_file": SimpleUploadedFile("source.mp4", b"video", content_type="video/mp4"),
+                    "output_mode": "audio",
+                    "export_format": "m4a",
+                    "normalize_loudness": "on",
+                    "speed_warning_threshold": "1.12",
+                    "retention_days": "30",
+                },
+            )
+            project = Project.objects.exclude(pk=self.project.pk).get()
+            self.assertRedirects(source, f"/project/{project.id}/timing/", fetch_redirect_response=False)
+
+            timing_response = self.client.post(
+                f"/project/{project.id}/timing/",
+                {"timing_action": "create", "mode": "manual", "source_text": "Первая фраза."},
+            )
+            project.refresh_from_db()
+            self.assertIsNotNone(project.timing_project_id)
+            self.assertIn(str(project.timing_project_id), timing_response["Location"])
+            editor = self.client.get(timing_response["Location"])
+            self.assertContains(editor, "phrase-timing-editor")
+            self.assertContains(editor, "Перейти к добавлению озвучки")
+
+            timing = project.timing_project
+            timing.phrases = [{"id": 1, "text": "Первая фраза.", "start": 0.0, "end": 2.0}]
+            timing.video_duration = 2.0
+            timing.save(update_fields=["phrases", "video_duration", "updated_at"])
+            completed = self.client.get(f"/project/{project.id}/timing/complete/")
+            self.assertRedirects(completed, f"/project/{project.id}/audio/", fetch_redirect_response=False)
+
+            audio = self.client.post(
+                f"/project/{project.id}/audio/",
+                {"audio_file": SimpleUploadedFile("voice.wav", b"audio", content_type="audio/wav")},
+            )
+            self.assertRedirects(audio, f"/project/{project.id}/", fetch_redirect_response=False)
+            project.refresh_from_db()
+            self.assertTrue(project.audio_file)
+            self.assertIn("Первая фраза", project.timecodes_text)
+
+    def test_automatic_timing_stays_attached_through_review(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            source = self.client.post(
+                "/start/voiceover/",
+                {
+                    "video_file": SimpleUploadedFile("automatic.mp4", b"video", content_type="video/mp4"),
+                    "output_mode": "audio",
+                    "export_format": "m4a",
+                    "normalize_loudness": "on",
+                    "speed_warning_threshold": "1.12",
+                    "retention_days": "30",
+                },
+            )
+            project = Project.objects.exclude(pk=self.project.pk).get()
+            self.assertRedirects(source, f"/project/{project.id}/timing/", fetch_redirect_response=False)
+
+            with patch("studio.forms.probe_has_audio", return_value=True), patch(
+                "studio.views.start_phrase_timing_worker", return_value=True,
+            ):
+                created = self.client.post(
+                    f"/project/{project.id}/timing/",
+                    {"timing_action": "create", "mode": "automatic", "source_text": ""},
+                )
+            project.refresh_from_db()
+            timing = project.timing_project
+            self.assertIsNotNone(timing)
+            self.assertEqual(timing.mode, PhraseTimingProject.MODE_AUTOMATIC)
+            self.assertIn(str(timing.id), created["Location"])
+
+            timing.phrases = [{
+                "id": 1, "text": "Автоматическая фраза.",
+                "start": 0.0, "end": 2.0, "end_explicit": True,
+            }]
+            timing.video_duration = 2.0
+            timing.processing_status = "complete"
+            timing.save(update_fields=["phrases", "video_duration", "processing_status", "updated_at"])
+            completed = self.client.get(f"/project/{project.id}/timing/complete/")
+            self.assertRedirects(completed, f"/project/{project.id}/audio/", fetch_redirect_response=False)
+            audio = self.client.post(
+                f"/project/{project.id}/audio/",
+                {"audio_file": SimpleUploadedFile("voice.wav", b"audio", content_type="audio/wav")},
+            )
+            self.assertRedirects(audio, f"/project/{project.id}/", fetch_redirect_response=False)
+
+            project.refresh_from_db()
+            self.assertEqual(project.timing_project_id, timing.id)
+            with translation.override("ru"):
+                summary = self.client.get(f"/project/{project.id}/")
+            self.assertContains(summary, "Созданы автоматически")
+            self.assertContains(summary, "Проверка перед обработкой")
 
 
     def test_editor_audio_supports_byte_ranges(self):
@@ -280,8 +794,10 @@ class WorkflowTests(TransactionTestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.processing_status, "queued")
         self.assertEqual(self.project.processing_step, "aligning")
-        self.assertIn("--reuse-transcription", spawn.call_args.args[0])
-        self.assertEqual(spawn.call_args.args[0][-2:], ["--realign-from", "7"])
+        job = self.project.jobs.get()
+        self.assertTrue(job.payload["reuse_transcription"])
+        self.assertEqual(job.payload["realign_from_position"], 7)
+        self.assertEqual(spawn.call_args.args[0][:2], ["run_voiceover_worker", "--once"])
 
     def test_full_processing_clears_manual_boundaries_before_spawn(self):
         from .workers import start_project_worker
@@ -289,11 +805,93 @@ class WorkflowTests(TransactionTestCase):
         ManualSegmentBoundary.objects.create(
             project=self.project, position=1, audio_start=1.0, audio_end=2.0
         )
+        SegmentReplacement.objects.create(
+            project=self.project, position=1,
+            audio_file="jobs/test/replacements/001.wav",
+        )
         with patch("studio.workers._spawn", return_value=123) as spawn:
-            self.assertTrue(start_project_worker(self.project, clear_manual_boundaries=True))
+            self.assertTrue(start_project_worker(
+                self.project,
+                clear_manual_boundaries=True,
+                clear_replacements=True,
+            ))
 
         self.assertFalse(self.project.manual_boundaries.exists())
+        self.assertFalse(self.project.segment_replacements.exists())
         self.assertNotIn("--reuse-transcription", spawn.call_args.args[0])
+
+    def test_recut_modes_reuse_recognition_and_choose_which_edits_to_keep(self):
+        Segment.objects.create(
+            project=self.project, position=1, text="Тест", video_start=0,
+            video_end=2, audio_file="jobs/test/segments/001.wav", status="ok",
+        )
+        with tempfile.TemporaryDirectory() as media_root:
+            work_dir = Path(media_root) / "jobs" / str(self.project.id)
+            work_dir.mkdir(parents=True)
+            transcription = work_dir / "transcription.json"
+            transcription.write_text('{"words": []}', encoding="utf-8")
+            (work_dir / "source-44100.wav").write_bytes(b"audio")
+            self.project.transcription_file = transcription.relative_to(media_root).as_posix()
+            self.project.transcription_audio_revision = self.project.audio_revision
+            self.project.processing_status = "complete"
+            self.project.save(update_fields=[
+                "transcription_file", "transcription_audio_revision", "processing_status",
+            ])
+
+            with override_settings(MEDIA_ROOT=media_root), patch(
+                "studio.views.start_project_worker", return_value=True,
+            ) as worker:
+                page = self.client.get(f"/project/{self.project.id}/")
+                self.assertContains(page, "Нарезать аудио на фразы")
+                self.assertNotContains(page, "Распознаём речь через Groq")
+
+                self.client.post(
+                    f"/project/{self.project.id}/process/",
+                    {"processing_action": "recut-preserve"},
+                )
+                worker.assert_called_once_with(
+                    self.project,
+                    reuse_transcription=True,
+                    realign_from_position=1,
+                    preserve_following=False,
+                )
+
+                worker.reset_mock()
+                self.client.post(
+                    f"/project/{self.project.id}/process/",
+                    {"processing_action": "recut-reset"},
+                )
+                worker.assert_called_once_with(
+                    self.project,
+                    reuse_transcription=True,
+                    realign_from_position=1,
+                    preserve_following=False,
+                    clear_manual_boundaries=True,
+                    clear_replacements=True,
+                )
+
+    def test_recut_progress_does_not_show_groq_stage(self):
+        self.project.processing_status = "queued"
+        self.project.processing_step = "aligning"
+        self.project.save(update_fields=["processing_status", "processing_step"])
+        ProcessingJob.objects.create(
+            project=self.project,
+            kind=ProcessingJob.KIND_PROCESS,
+            status="queued",
+            current_step="aligning",
+            payload={
+                "reuse_transcription": True,
+                "realign_from_position": 1,
+                "preserve_following": False,
+                "timing_only_positions": None,
+            },
+        )
+
+        response = self.client.get(f"/project/{self.project.id}/")
+
+        self.assertContains(response, "Сопоставляем фразы с распознанными словами")
+        self.assertContains(response, "Нарезаем и подгоняем фрагменты")
+        self.assertNotContains(response, "Распознаём речь через Groq")
 
     def test_manual_realign_never_falls_back_to_groq(self):
         from .services.voiceover import ProcessingError, process_project
@@ -322,6 +920,95 @@ class WorkflowTests(TransactionTestCase):
         self.assertTrue(boundary.skipped)
         self.assertIsNone(boundary.audio_start)
 
+    @override_settings(VOICEOVER_AUTOSTART_WORKER=False)
+    def test_durable_queue_prevents_duplicate_active_jobs(self):
+        from .workers import start_project_worker
+
+        self.assertTrue(start_project_worker(self.project))
+        self.assertFalse(start_project_worker(self.project))
+        job = ProcessingJob.objects.get(project=self.project)
+        self.assertEqual(job.status, "queued")
+        self.assertEqual(job.payload["reuse_transcription"], False)
+
+    def test_project_page_has_problem_filter_and_single_replacement(self):
+        Segment.objects.create(
+            project=self.project, position=1, text="Тест", video_start=0,
+            video_end=2, audio_start=0.25, audio_end=1.75,
+            output_duration=1.5, audio_file="jobs/test/segments/001.wav",
+            status="not_found",
+        )
+        response = self.client.get(f"/project/{self.project.id}/")
+        self.assertContains(response, "problem-filter")
+        self.assertNotContains(response, "replace-batch")
+        self.assertContains(response, 'data-duration="1.5"')
+        self.assertContains(response, "Заменить аудио")
+        html = response.content.decode()
+        self.assertLess(html.index('id="editor-previous"'), html.index('id="editor-phrase"'))
+        self.assertLess(html.index('id="editor-phrase"'), html.index('id="editor-next"'))
+
+    def test_editing_review_phrase_updates_saved_timing_project(self):
+        timing = PhraseTimingProject.objects.create(
+            owner=self.user,
+            video_file="tools/phrase-timing/test.mp4",
+            source_text="Старый текст\nВторая фраза",
+            phrases=[
+                {
+                    "text": "Старый текст", "start": 0.0, "end": 2.0,
+                    "words": [{"word": "Старый", "start": 0.0, "end": 0.5}],
+                    "issues": ["low_confidence", "other"],
+                },
+                {"text": "Вторая фраза", "start": 2.0, "end": 4.0},
+            ],
+            video_duration=4.0,
+        )
+        self.project.timing_project = timing
+        self.project.processing_status = "complete"
+        self.project.save(update_fields=["timing_project", "processing_status"])
+        segment = Segment.objects.create(
+            project=self.project, position=1, text="Старый текст",
+            video_start=0, video_end=2, status="ok",
+        )
+        Segment.objects.create(
+            project=self.project, position=2, text="Вторая фраза",
+            video_start=2, video_end=4, status="ok",
+        )
+        ManualSegmentBoundary.objects.create(
+            project=self.project, position=1, audio_start=0.1, audio_end=1.8,
+        )
+
+        response = self.client.post(
+            f"/project/{self.project.id}/segments/1/text/",
+            data=json.dumps({"text": "Исправленный текст"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        segment.refresh_from_db()
+        timing.refresh_from_db()
+        self.project.refresh_from_db()
+        self.assertEqual(segment.text, "Исправленный текст")
+        self.assertEqual(timing.phrases[0]["text"], "Исправленный текст")
+        self.assertEqual(timing.phrases[0]["words"], [])
+        self.assertEqual(timing.phrases[0]["issues"], ["other"])
+        self.assertEqual(timing.source_text, "Исправленный текст\nВторая фраза")
+        self.assertIn("Исправленный текст", self.project.timecodes_text)
+        self.assertIn("Вторая фраза", self.project.timecodes_text)
+        self.assertTrue(self.project.manual_boundaries.filter(position=1).exists())
+        self.assertEqual(self.project.processing_status, "complete")
+        self.assertEqual(self.project.pending_reprocessing, {})
+
+    def test_review_phrase_text_cannot_be_empty(self):
+        Segment.objects.create(
+            project=self.project, position=1, text="Тест",
+            video_start=0, video_end=2, status="ok",
+        )
+        response = self.client.post(
+            f"/project/{self.project.id}/segments/1/text/",
+            data=json.dumps({"text": "   "}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 
 class MediaToolsTests(TransactionTestCase):
@@ -337,8 +1024,399 @@ class MediaToolsTests(TransactionTestCase):
         self.assertEqual(tools.status_code, 200)
         self.assertEqual(merge.status_code, 200)
         self.assertContains(tools, "Объединить видео с аудио")
+        self.assertContains(tools, "Аудио в текст")
+        self.assertContains(tools, "Разметка фраз по времени")
+        self.assertContains(tools, "Заменить фрагмент озвучки")
+        self.assertContains(tools, "Подготовить озвучку")
         self.assertContains(merge, "Наложить поверх исходного звука")
         self.assertContains(merge, 'class="toggle"')
+
+    def test_phrase_timing_manual_project_opens_reusable_editor(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            response = self.client.post(
+                "/tools/phrase-timing/",
+                {
+                    "mode": "manual",
+                    "media_file": SimpleUploadedFile("lesson.mp4", b"video", content_type="video/mp4"),
+                    "source_text": "Первая фраза. Вторая фраза!",
+                },
+            )
+            project = PhraseTimingProject.objects.get()
+            self.assertEqual(response.status_code, 302)
+            self.assertIn(str(project.id), response["Location"])
+            self.assertEqual([item["text"] for item in project.phrases], ["Первая фраза.", "Вторая фраза!"])
+            editor = self.client.get(response["Location"])
+            self.assertContains(editor, "phrase-timing-editor")
+            self.assertContains(editor, "phrase_timing.js")
+
+    def test_phrase_timing_automatic_mode_creates_background_project_without_text(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            with patch("studio.forms.probe_has_audio", return_value=True), \
+                 patch("studio.views.start_phrase_timing_worker", return_value=True) as start:
+                response = self.client.post(
+                    "/tools/phrase-timing/",
+                    {
+                        "mode": "automatic",
+                        "media_file": SimpleUploadedFile("lesson.mp4", b"video", content_type="video/mp4"),
+                        "source_text": "",
+                    },
+                )
+            project = PhraseTimingProject.objects.get()
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(project.processing_status, "pending")
+            start.assert_called_once_with(project)
+
+    def test_automatic_timing_renders_source_text_field_hidden(self):
+        form = PhraseTimingToolForm(initial={"mode": PhraseTimingProject.MODE_AUTOMATIC})
+        response = self.client.get("/tools/phrase-timing/")
+        rendered = Template(
+            '{% load i18n %}{% include "studio/includes/phrase_timing_setup_fields.html" with form=form %}'
+        ).render(Context({"form": form}))
+        self.assertIn("data-timing-source-field hidden", rendered)
+        self.assertContains(response, "data-timing-source-field")
+
+    def test_automatic_timing_rejects_video_without_audio(self):
+        with patch("studio.forms.probe_has_audio", return_value=False):
+            response = self.client.post(
+                "/tools/phrase-timing/",
+                {
+                    "mode": "automatic",
+                    "media_file": SimpleUploadedFile("silent.mp4", b"video", content_type="video/mp4"),
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "нет аудиодорожки")
+        self.assertFalse(PhraseTimingProject.objects.exists())
+
+    def test_phrase_timing_start_has_mode_specific_guides(self):
+        response = self.client.get("/tools/phrase-timing/")
+        self.assertContains(response, 'data-timing-guide="manual"')
+        self.assertContains(response, 'data-timing-guide="automatic" hidden')
+        self.assertContains(response, "Перейти к ручной разметке")
+        self.assertContains(response, "Распознать речь и создать таймкоды")
+        self.assertContains(response, "Если озвучки ещё нет в файле")
+        self.assertContains(response, "Если в файле уже есть нужная речь")
+        self.assertContains(response, "Когда озвучку нужно расположить вручную")
+        self.assertContains(response, "Когда в файле уже звучит нужный текст")
+        self.assertContains(response, "DOMContentLoaded")
+        self.assertContains(response, "document.querySelectorAll('[data-timing-guide]')")
+
+    def test_quick_review_is_only_available_for_automatic_timing(self):
+        manual = PhraseTimingProject.objects.create(
+            video_file="tools/phrase-timing/test/input/manual.mp4",
+            mode=PhraseTimingProject.MODE_MANUAL,
+            processing_status="complete",
+            phrases=[{"id": 1, "text": "Фраза", "start": 0.0, "end": 1.0}],
+        )
+        automatic = PhraseTimingProject.objects.create(
+            video_file="tools/phrase-timing/test/input/automatic.mp4",
+            mode=PhraseTimingProject.MODE_AUTOMATIC,
+            processing_status="complete",
+            phrases=[{"id": 1, "text": "Фраза", "start": 0.0, "end": 1.0}],
+        )
+
+        manual_response = self.client.get(f"/tools/phrase-timing/{manual.id}/")
+        automatic_response = self.client.get(f"/tools/phrase-timing/{automatic.id}/")
+
+        self.assertNotContains(manual_response, 'data-timing-review')
+        self.assertNotContains(manual_response, 'id="timing-review-controls"')
+        self.assertContains(automatic_response, 'data-timing-review')
+        self.assertContains(automatic_response, 'id="timing-review-controls"')
+
+    def test_automatic_phrase_timing_worker_saves_phrases_and_vad_review(self):
+        payload = {
+            "words": [{"word": "Готово.", "start": 0.2, "end": 0.8}],
+            "segments": [],
+        }
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            project = PhraseTimingProject.objects.create(
+                video_file=SimpleUploadedFile("lesson.mp4", b"video", content_type="video/mp4"),
+                mode=PhraseTimingProject.MODE_AUTOMATIC,
+                processing_status="queued",
+            )
+            with patch("studio.services.phrase_timing.probe_has_audio", return_value=True), \
+                 patch("studio.services.phrase_timing.run"), \
+                 patch("studio.services.phrase_timing._transcribe_long", return_value=payload), \
+                 patch("studio.services.phrase_timing.speech_probabilities", return_value=([.9] * 80, 80 * 512)), \
+                 patch("studio.services.phrase_timing.probe_duration", return_value=2.0):
+                process_phrase_timing_project(project)
+            project.refresh_from_db()
+            self.assertEqual(project.processing_status, "complete")
+            self.assertEqual(project.phrases[0]["text"], "Готово.")
+            self.assertTrue(project.phrases[0]["words"])
+            self.assertTrue(project.review_items)
+            self.assertEqual(project.review_items[0]["kind"], "unrecognized_speech")
+
+    def test_phrase_timing_status_reports_background_progress(self):
+        project = PhraseTimingProject.objects.create(
+            video_file="tools/phrase-timing/test/input/video.mp4",
+            mode=PhraseTimingProject.MODE_AUTOMATIC,
+            processing_status="processing",
+            processing_step="checking_voice",
+        )
+        response = self.client.get(f"/tools/phrase-timing/{project.id}/status/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["step"], "checking_voice")
+
+    def test_automatic_editor_does_not_present_a_next_phrase_state(self):
+        project = PhraseTimingProject.objects.create(
+            video_file="tools/phrase-timing/test/input/video.mp4",
+            mode=PhraseTimingProject.MODE_AUTOMATIC,
+            processing_status="complete",
+            phrases=[{"id": 1, "text": "Фраза", "start": 0.0, "end": 1.0, "end_explicit": True}],
+        )
+        response = self.client.get(f"/tools/phrase-timing/{project.id}/")
+        self.assertContains(response, 'data-project-mode="automatic"')
+        self.assertContains(response, 'data-label-edit-phrase="Редактировать фразу и таймкоды"')
+        self.assertContains(response, 'id="timing-phrase-edit-dialog"')
+        self.assertContains(response, 'id="timing-overlap-warning"')
+        self.assertNotContains(response, "Следующая фраза")
+
+    def test_phrase_timing_video_supports_byte_ranges(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            project = PhraseTimingProject.objects.create(
+                video_file=SimpleUploadedFile("lesson.mp4", b"0123456789", content_type="video/mp4"),
+                source_text="Фраза",
+                phrases=[{"id": 1, "text": "Фраза", "start": None, "end": None}],
+            )
+            response = self.client.get(
+                f"/tools/phrase-timing/{project.id}/video/",
+                HTTP_RANGE="bytes=3-6",
+            )
+            content = b"".join(response.streaming_content)
+
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response["Content-Range"], "bytes 3-6/10")
+        self.assertEqual(response["Accept-Ranges"], "bytes")
+        self.assertEqual(response["Content-Type"], "video/mp4")
+        self.assertEqual(content, b"3456")
+
+    def test_phrase_timing_accepts_audio_and_uses_the_same_editor(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            response = self.client.post(
+                "/tools/phrase-timing/",
+                {
+                    "mode": "manual",
+                    "media_file": SimpleUploadedFile("voice.wav", b"audio", content_type="audio/wav"),
+                    "source_text": "Первая фраза.",
+                },
+            )
+            project = PhraseTimingProject.objects.get()
+            editor = self.client.get(response["Location"])
+            media = self.client.get(f"/tools/phrase-timing/{project.id}/media/")
+        self.assertEqual(response.status_code, 302)
+        self.assertContains(editor, "<audio", html=False)
+        self.assertEqual(media["Content-Type"], "audio/x-wav")
+
+    def test_phrase_timing_state_and_exports_are_saved(self):
+        project = PhraseTimingProject.objects.create(
+            video_file="tools/phrase-timing/test/input/video.mp4",
+            source_text="Первая\nВторая",
+            phrases=[
+                {"id": 1, "text": "Первая", "start": None, "end": None},
+                {"id": 2, "text": "Вторая", "start": None, "end": None},
+            ],
+        )
+        response = self.client.post(
+            f"/tools/phrase-timing/{project.id}/save/",
+            data=json.dumps({
+                "duration": 8,
+                "phrases": [
+                    {"text": "Первая", "start": 1.25},
+                    {"text": "Вторая", "start": 3.5},
+                ],
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        project.refresh_from_db()
+        self.assertEqual(project.phrases[0]["end"], 3.5)
+        exported = self.client.get(f"/tools/phrase-timing/{project.id}/export/srt/")
+        self.assertEqual(exported.status_code, 200)
+        self.assertIn("00:00:01,250 --> 00:00:03,500", exported.content.decode())
+
+    def test_phrase_timing_export_rejects_an_unmarked_first_phrase(self):
+        project = PhraseTimingProject.objects.create(
+            video_file="tools/phrase-timing/test/input/video.mp4",
+            source_text="Первая\nВторая",
+            phrases=[
+                {"id": 1, "text": "Первая", "start": None, "end": None},
+                {"id": 2, "text": "Вторая", "start": 3.5, "end": 8.0},
+            ],
+            video_duration=8,
+        )
+        response = self.client.get(
+            f"/tools/phrase-timing/{project.id}/export/srt/?include_unmarked=1",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("first phrase", response.content.decode())
+
+    def test_phrase_timing_text_and_timecodes_can_be_edited_together(self):
+        project = PhraseTimingProject.objects.create(
+            video_file="tools/phrase-timing/test/input/video.mp4",
+            source_text="Первая\nВторая",
+            phrases=[
+                {"id": 1, "text": "Первая", "start": 1.0, "end": 3.0},
+                {"id": 2, "text": "Вторая", "start": 3.0, "end": 5.0},
+            ],
+            video_duration=8,
+        )
+        response = self.client.post(
+            f"/tools/phrase-timing/{project.id}/resegment/",
+            data=json.dumps({"text": "[00:01.500] Первая исправлена\nВторая", "duration": 8}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        project.refresh_from_db()
+        self.assertEqual(project.phrases[0]["start"], 1.5)
+        self.assertIsNone(project.phrases[1]["start"])
+        self.assertEqual(project.source_text, "Первая исправлена\nВторая")
+
+    def test_audio_to_text_interface_is_available(self):
+        response = self.client.get("/tools/audio-to-text/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Точная расшифровка")
+        self.assertContains(response, "Читаемый текст")
+        self.assertContains(response, "Имена и специальные термины")
+        self.assertNotContains(response, "прототип")
+
+    def test_audio_to_text_upload_creates_background_job(self):
+        with patch("studio.views.start_media_tool_worker", return_value=True) as start:
+            response = self.client.post(
+                "/tools/audio-to-text/",
+                {
+                    "media": SimpleUploadedFile("speech.wav", b"audio", content_type="audio/wav"),
+                    "language": "ru",
+                    "export_format": "both",
+                    "transcription_mode": "readable",
+                    "terms": "FormaCode, Pulse",
+                    "divide_paragraphs": "on",
+                    "preserve_wording": "on",
+                },
+            )
+        job = MediaToolJob.objects.get(kind=MediaToolJob.KIND_TRANSCRIBE)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(str(job.id), response["Location"])
+        self.assertEqual(job.options["language"], "ru")
+        self.assertEqual(job.inputs.get().role, "media")
+        start.assert_called_once_with(job)
+
+    def test_audio_to_text_job_produces_editable_text_and_valid_docx(self):
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                job = MediaToolJob.objects.create(
+                    kind=MediaToolJob.KIND_TRANSCRIBE,
+                    options={
+                        "language": "en", "export_format": "both",
+                        "transcription_mode": "readable", "divide_paragraphs": True,
+                        "preserve_wording": True,
+                    },
+                )
+                MediaToolInput.objects.create(
+                    job=job, role="media", position=0,
+                    media_file=SimpleUploadedFile("speech.wav", b"audio", content_type="audio/wav"),
+                )
+                payload = {
+                    "text": "hello world second paragraph",
+                    "language": "en", "duration": 4.0,
+                    "words": [{"word": "hello", "start": 0, "end": .4}],
+                    "segments": [
+                        {"text": "hello world", "start": 0, "end": 1},
+                        {"text": "second paragraph", "start": 2.6, "end": 4},
+                    ],
+                }
+                with patch("studio.services.tool_processing.run"), patch(
+                    "studio.services.tool_processing._transcribe_prepared_audio", return_value=payload,
+                ), patch(
+                    "studio.services.tool_processing._format_readable_text",
+                    return_value="Hello, world!\n\nSecond paragraph.",
+                ):
+                    process_media_tool_job(job)
+                job.refresh_from_db()
+                self.assertEqual(job.processing_status, "complete")
+                self.assertEqual(job.result_manifest["text"], "Hello, world!\n\nSecond paragraph.")
+                self.assertTrue((Path(media_root) / job.result_file).is_file())
+                import zipfile
+                with zipfile.ZipFile(Path(media_root) / job.result_manifest["docx"]) as archive:
+                    self.assertIn("word/document.xml", archive.namelist())
+
+    def test_transcription_download_uses_edited_text(self):
+        job = MediaToolJob.objects.create(
+            kind=MediaToolJob.KIND_TRANSCRIBE,
+            processing_status="complete",
+            result_manifest={"text": "Original"},
+        )
+        response = self.client.post(
+            f"/tools/audio-to-text/{job.id}/download/txt/",
+            {"text": "Edited transcript"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content.decode(), "Edited transcript\n")
+        self.assertIn("transcript.txt", response["Content-Disposition"])
+
+    def test_docx_builder_escapes_user_text(self):
+        import io
+        import zipfile
+        with zipfile.ZipFile(io.BytesIO(build_docx_bytes("A & B < C"))) as archive:
+            document = archive.read("word/document.xml").decode()
+        self.assertIn("A &amp; B &lt; C", document)
+
+    def test_home_presents_three_equal_workflow_cards(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="workflow-choice"', count=3)
+        self.assertNotContains(response, 'class="scenario-card"')
+        self.assertNotContains(response, "Interface preview")
+        self.assertNotContains(response, "coming-soon")
+        self.assertContains(response, "Сценарии")
+
+    def test_each_media_tool_has_a_working_form(self):
+        for slug in (
+            "replace-fragment",
+            "split-phrases",
+            "fit-subtitles",
+            "prepare-voiceover",
+            "check-durations",
+            "create-subtitles",
+        ):
+            response = self.client.get(f"/tools/prototype/{slug}/")
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "prototype-form")
+            self.assertContains(response, 'type="submit"')
+            self.assertNotContains(response, "processing is not connected")
+
+    def test_split_tool_accepts_manual_intervals(self):
+        with patch("studio.views.start_media_tool_worker", return_value=True):
+            response = self.client.post(
+                "/tools/prototype/split-phrases/",
+                {
+                    "audio": SimpleUploadedFile("voice.wav", b"audio", content_type="audio/wav"),
+                    "method": "manual",
+                    "manual_boundaries": "00:00.250 --> 00:03.800 First\n4.1 - 7.6 Second",
+                    "silence_seconds": ".8",
+                    "output_format": "wav",
+                },
+            )
+        self.assertEqual(response.status_code, 302)
+        job = MediaToolJob.objects.get()
+        self.assertEqual(job.options["method"], "manual")
+        self.assertIn("First", job.options["manual_boundaries"])
+
+    def test_media_tool_upload_creates_background_job(self):
+        with patch("studio.views.start_media_tool_worker", return_value=True) as start:
+            response = self.client.post(
+                "/tools/prototype/prepare-voiceover/",
+                {
+                    "files": [SimpleUploadedFile("voice.wav", b"audio", content_type="audio/wav")],
+                    "trim_edges": "on", "normalize": "on", "prevent_clipping": "on",
+                    "soft_edges": "on", "output_format": "wav", "loudness_target": "-16",
+                },
+            )
+        job = MediaToolJob.objects.get()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(job.kind, MediaToolJob.KIND_PREPARE)
+        self.assertEqual(job.inputs.get().role, "voiceover")
+        start.assert_called_once_with(job)
 
     def test_valid_upload_creates_job_without_waiting_for_ffmpeg(self):
         video = SimpleUploadedFile(
@@ -452,6 +1530,71 @@ class AccountAndDashboardTests(TransactionTestCase):
             self.client.get(f"/project/{foreign.id}/").status_code,
             404,
         )
+        self.assertEqual(response.content.decode().count('/start/'), 1)
+
+    def test_empty_dashboard_has_at_most_two_project_creation_links(self):
+        response = self.client.get("/projects/")
+        self.assertEqual(response.status_code, 200)
+        self.assertLessEqual(response.content.decode().count('/start/'), 2)
+
+    def test_new_project_opens_workflow_selector_and_prototype_pages(self):
+        selector = self.client.get("/start/")
+        localization = self.client.get("/start/localization/")
+        takes = self.client.get("/start/takes/")
+        self.assertContains(selector, "Выберите сценарий работы")
+        self.assertContains(selector, "/start/voiceover/")
+        self.assertContains(selector, "/start/localization/")
+        self.assertContains(selector, "/start/takes/")
+        self.assertContains(localization, "prototype-form")
+        self.assertContains(takes, "prototype-form")
+
+    def test_localization_project_creates_language_versions(self):
+        response = self.client.post(
+            "/start/localization/",
+            {
+                "title": "Campaign",
+                "source_video": SimpleUploadedFile("source.mp4", b"video", content_type="video/mp4"),
+                "source_script_text": "00:00 - First\n00:03 - Second",
+                "languages": ["en", "de"],
+                "copy_settings": "on",
+            },
+        )
+        localization = LocalizationProject.objects.get()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(set(localization.versions.values_list("language_code", flat=True)), {"en", "de"})
+        self.assertIn(str(localization.id), response["Location"])
+
+    def test_takes_project_accepts_one_long_recording(self):
+        with patch("studio.views.start_takes_worker", return_value=True) as start:
+            response = self.client.post(
+                "/start/takes/",
+                {
+                    "title": "Spot",
+                    "video_file": SimpleUploadedFile("spot.mp4", b"video", content_type="video/mp4"),
+                    "script_text": "00:00 - First\n00:03 - Second",
+                    "mode": "lines",
+                    "recordings": [SimpleUploadedFile("session.wav", b"audio", content_type="audio/wav")],
+                },
+            )
+        project = TakesProject.objects.get()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(project.recordings.count(), 1)
+        start.assert_called_once_with(project)
+
+    def test_selecting_take_deselects_previous_candidate(self):
+        project = TakesProject.objects.create(
+            owner=self.user, video_file="takes/test/source/video.mp4",
+            script_text="00:00 - Test",
+        )
+        recording = TakeRecording.objects.create(takes_project=project, position=1, media_file="takes/test/recording.wav")
+        phrase = TakePhrase.objects.create(takes_project=project, position=1, text="Test", video_start=0, video_end=3)
+        first = TakeCandidate.objects.create(phrase=phrase, recording=recording, source_start=0, source_end=1, selected=True)
+        second = TakeCandidate.objects.create(phrase=phrase, recording=recording, source_start=2, source_end=3)
+        response = self.client.post(f"/takes/{project.id}/candidate/{second.id}/select/")
+        first.refresh_from_db(); second.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(first.selected)
+        self.assertTrue(second.selected)
 
     def test_delete_project_removes_database_row_and_job_directory(self):
         with tempfile.TemporaryDirectory() as media_root:

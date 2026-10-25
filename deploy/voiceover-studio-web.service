@@ -1,0 +1,23 @@
+[Unit]
+Description=Voiceover Studio web application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/var/www/voiceover-studio
+EnvironmentFile=/etc/voiceover-studio.env
+ExecStart=/var/www/voiceover-studio/.venv/bin/gunicorn voiceover_studio.wsgi:application --bind 127.0.0.1:8001 --workers 1 --threads 2 --timeout 120 --access-logfile - --error-logfile -
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/voiceover-studio
+MemoryHigh=250M
+MemoryMax=320M
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+{% load i18n %}
+<ol class="workflow-steps voiceover-workflow-steps" aria-label="{% trans 'Voiceover workflow steps' %}">
+  <li class="{% if current_step == 'source' %}active{% elif project %}complete{% endif %}">
+    {% if project and current_step != 'source' %}<a href="{% url 'upload-video' project_id=project.id %}">{% endif %}
+    <i>{% if current_step != 'source' and project %}✓{% else %}1{% endif %}</i><span>{% trans "Source video" %}</span>
+    {% if project and current_step != 'source' %}</a>{% endif %}
+  </li>
+  <li class="{% if current_step == 'timing' %}active{% elif project.timecodes_text or project.timecodes_file %}complete{% endif %}">
+    {% if project and project.video_file and current_step != 'timing' %}<a href="{% url 'project-timing' project_id=project.id %}">{% endif %}
+    <i>{% if current_step != 'timing' and project.timecodes_text or current_step != 'timing' and project.timecodes_file %}✓{% else %}2{% endif %}</i><span>{% trans "Phrase timecodes" %}</span>
+    {% if project and project.video_file and current_step != 'timing' %}</a>{% endif %}
+  </li>
+  <li class="{% if current_step == 'voiceover' %}active{% elif project.audio_file %}complete{% endif %}">
+    {% if project and current_step != 'voiceover' %}{% if project.timecodes_text or project.timecodes_file %}<a href="{% url 'edit-audio' project_id=project.id %}">{% endif %}{% endif %}
+    <i>{% if current_step != 'voiceover' and project.audio_file %}✓{% else %}3{% endif %}</i><span>{% trans "Voiceover" %}</span>
+    {% if project and current_step != 'voiceover' %}{% if project.timecodes_text or project.timecodes_file %}</a>{% endif %}{% endif %}
+  </li>
+  <li class="{% if current_step == 'review' %}active{% elif project.audio_file and project.video_file %}complete{% endif %}">
+    {% if project and project.audio_file and project.video_file and current_step != 'review' %}<a href="{% url 'project-summary' project_id=project.id %}">{% endif %}
+    <i>{% if current_step == 'review' %}4{% elif project.audio_file and project.video_file %}✓{% else %}4{% endif %}</i><span>{% trans "Review before processing" %}</span>
+    {% if project and project.audio_file and project.video_file and current_step != 'review' %}</a>{% endif %}
+  </li>
+</ol>

@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 from django.conf import settings
+from voiceover_core.media import video_codec_arguments
 
 
 class MediaMergeError(RuntimeError):
@@ -42,21 +43,6 @@ def probe_media(path):
 def update_step(job, step):
     job.processing_step = step
     job.__class__.objects.filter(pk=job.pk).update(processing_step=step)
-
-
-def video_codec_arguments(codec_name):
-    if codec_name == "h264":
-        return ["-c:v", "copy"]
-    return [
-        "-c:v",
-        "libx264",
-        "-preset",
-        "medium",
-        "-crf",
-        "18",
-        "-pix_fmt",
-        "yuv420p",
-    ]
 
 
 def merge_video_with_audio(job):
@@ -121,17 +107,23 @@ def merge_video_with_audio(job):
             "-i",
             job.audio_file.path,
         ]
+        delay = max(0, round(job.start_offset * 1000))
         if job.mix_original and original_audio_streams:
-            audio_filter = (
-                "[0:a:0]aresample=48000,apad[original];"
-                "[1:a:0]aresample=48000,apad[added];"
-                "[original][added]"
-                "amix=inputs=2:duration=longest:"
-                "dropout_transition=0:normalize=0,"
-                "alimiter=limit=0.95[aout]"
-            )
+            if job.duck_original:
+                audio_filter = (
+                    f"[0:a:0]aresample=48000,volume={job.original_volume:.4f},apad[original];"
+                    f"[1:a:0]aresample=48000,volume={job.voice_volume:.4f},adelay={delay}:all=1,apad,asplit=2[side][mixvoice];"
+                    "[original][side]sidechaincompress=threshold=0.025:ratio=8:attack=20:release=350[ducked];"
+                    "[ducked][mixvoice]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.95[aout]"
+                )
+            else:
+                audio_filter = (
+                    f"[0:a:0]aresample=48000,volume={job.original_volume:.4f},apad[original];"
+                    f"[1:a:0]aresample=48000,volume={job.voice_volume:.4f},adelay={delay}:all=1,apad[added];"
+                    "[original][added]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.95[aout]"
+                )
         else:
-            audio_filter = "[1:a:0]aresample=48000,apad[aout]"
+            audio_filter = f"[1:a:0]aresample=48000,volume={job.voice_volume:.4f},adelay={delay}:all=1,apad[aout]"
 
         command.extend([
             "-filter_complex",
@@ -147,12 +139,12 @@ def merge_video_with_audio(job):
             "192k",
             "-ac",
             "2",
-            "-t",
-            f"{duration:.6f}",
             "-movflags",
             "+faststart",
-            str(output_path),
         ])
+        if job.trim_to_video:
+            command.extend(["-t", f"{duration:.6f}"])
+        command.append(str(output_path))
         run(command)
 
         update_step(job, "finalizing")

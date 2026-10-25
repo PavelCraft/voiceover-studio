@@ -1,15 +1,15 @@
 {% extends "studio/base.html" %}
 {% load i18n %}
 {% block title %}{% trans "Video processing — Voiceover Studio" %}{% endblock %}
+{% block topbar_title %}{% trans "Combine video with audio" %}{% endblock %}
 {% block navigation %}
 <nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
-  <a class="button secondary" href="{% url 'merge-video-audio' %}">{% trans "Back" %}</a>
-  <span></span>
+  <a href="{% url 'merge-video-audio' %}">← {% trans "Back to tool" %}</a>
+  <span>{% trans "Tool 01" %}</span>
 </nav>
 {% endblock %}
 {% block content %}
-<p class="eyebrow">{% trans "Tool 01" %}</p>
-<h1>{% trans "Combine video with audio" %}</h1>
+<div class="page-heading compact"><div><p class="eyebrow"><span></span>{% trans "Processing workspace" %}</p><h1>{% trans "Combine video with audio" %}</h1></div></div>
 
 <section class="card">
   <dl class="summary">

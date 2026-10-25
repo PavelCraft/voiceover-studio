@@ -1,0 +1,13 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Choose a workflow — Voiceover Studio" %}{% endblock %}
+{% block topbar_title %}{% trans "New project" %}{% endblock %}
+{% block navigation %}<nav class="workflow-nav"><a href="{% url 'dashboard' %}">← {% trans "Back to projects" %}</a><span>{% trans "The workflow can also be seen in the project library" %}</span></nav>{% endblock %}
+{% block content %}
+<header class="page-heading compact"><div><p class="eyebrow"><span></span>{% trans "New project" %}</p><h1>{% trans "Choose how you want to work" %}</h1><p class="lead">{% trans "Each workflow keeps only the steps and settings needed for its result." %}</p></div></header>
+<div class="workflow-selection-grid">
+  <a class="workflow-choice featured-choice" href="{% url 'upload-audio' %}"><span class="choice-number">01</span><span class="heading-icon"><svg viewBox="0 0 24 24"><path d="M4 12h2l2-5 3 10 3-8 2 3h4M5 20h14"/></svg></span><span class="status-chip available">{% trans "Available" %}</span><h2>{% trans "Voice a finished video" %}</h2><p>{% trans "Align a ready voiceover with a video, review phrases and export the final result." %}</p><span class="choice-steps"><i>{% trans "Video" %}</i><b>→</b><i>{% trans "Timecodes" %}</i><b>→</b><i>{% trans "Voiceover" %}</i><b>→</b><i>{% trans "Review" %}</i></span><strong>{% trans "Start project" %} →</strong></a>
+  <a class="workflow-choice" href="{% url 'localization-scenario' %}"><span class="choice-number">02</span><span class="heading-icon violet-icon"><svg viewBox="0 0 24 24"><path d="M5 6h14M8 4v2c0 5 3 9 8 12M16 6c-1 4-4 8-8 11M15 15h5M17.5 12v6"/></svg></span><span class="status-chip available">{% trans "Available" %}</span><h2>{% trans "Localize into several languages" %}</h2><p>{% trans "Manage several language versions of one video and export them as a complete set." %}</p><span class="choice-steps"><i>{% trans "Source" %}</i><b>→</b><i>{% trans "Languages" %}</i><b>→</b><i>{% trans "Export" %}</i></span><strong>{% trans "Open workflow" %} →</strong></a>
+  <a class="workflow-choice" href="{% url 'takes-scenario' %}"><span class="choice-number">03</span><span class="heading-icon amber-icon"><svg viewBox="0 0 24 24"><path d="M6 7h3v10H6zM11 5h3v14h-3zM16 8h3v8h-3z"/></svg></span><span class="status-chip research">{% trans "Available" %}</span><h2>{% trans "Assemble voiceover from takes" %}</h2><p>{% trans "Find repeated takes, compare them phrase by phrase and assemble the best version." %}</p><span class="choice-steps"><i>{% trans "Materials" %}</i><b>→</b><i>{% trans "Takes" %}</i><b>→</b><i>{% trans "Assembly" %}</i></span><strong>{% trans "Open workflow" %} →</strong></a>
+</div>
+{% endblock %}

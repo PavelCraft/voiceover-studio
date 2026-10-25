@@ -1,38 +1,110 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-01 22:17+0300\n"
+"POT-Creation-Date: 2026-10-24 21:42+0300\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#, fuzzy
-#| msgid "Voiceover Studio"
+msgid "English"
+msgstr "Английский"
+
+msgid "Russian"
+msgstr "Русский"
+
+msgid "Spanish"
+msgstr "Испанский"
+
+msgid "German"
+msgstr "Немецкий"
+
+msgid "French"
+msgstr "Французский"
+
+msgid "Portuguese (Brazil)"
+msgstr "Португальский (Бразилия)"
+
+msgid "Portuguese (Portugal)"
+msgstr "Португальский (Португалия)"
+
+msgid "Japanese"
+msgstr "Японский"
+
+msgid "Chinese (Simplified)"
+msgstr "Китайский (упрощённый)"
+
+msgid "Italian"
+msgstr "Итальянский"
+
+msgid "Polish"
+msgstr "Польский"
+
+msgid "Turkish"
+msgstr "Турецкий"
+
+msgid "Ukrainian"
+msgstr "Украинский"
+
 msgid "Voiceover recording"
-msgstr "Студия озвучки"
+msgstr "Запись озвучки"
 
 msgid "Text with video timecodes"
 msgstr "Текст с таймкодами видео"
 
-msgid "Or upload a TXT file"
-msgstr "Или загрузите файл TXT"
+msgid "Or upload TXT, SRT, VTT or CSV"
+msgstr "Или загрузите TXT, SRT, VTT или CSV"
 
 #, python-format
 msgid "Unsupported audio format. Allowed formats: %(formats)s."
 msgstr "Неподдерживаемый формат аудио. Допустимые форматы: %(formats)s."
 
-msgid "Unsupported timecode format. Upload a TXT file."
-msgstr "Неподдерживаемый формат таймкодов. Загрузите файл TXT."
+msgid "Unsupported script format. Upload TXT, SRT, VTT or CSV."
+msgstr "Неподдерживаемый формат сценария. Загрузите TXT, SRT, VTT или CSV."
 
 msgid "Enter text with timecodes or upload a TXT file."
 msgstr "Введите текст с таймкодами или загрузите файл TXT."
+
+msgid "The script file must use UTF-8 encoding."
+msgstr "Файл сценария должен быть в кодировке UTF-8."
+
+#, python-format
+msgid "The script could not be parsed: %(error)s"
+msgstr "Не удалось разобрать сценарий: %(error)s"
+
+msgid "Enter text with timecodes or upload a TXT, SRT, VTT or CSV file."
+msgstr "Введите текст с таймкодами или загрузите файл TXT, SRT, VTT или CSV."
 
 msgid "Video"
 msgstr "Видео"
 
 msgid "Export mode"
 msgstr "Режим экспорта"
+
+msgid "Audio format"
+msgstr "Формат аудио"
+
+msgid "Normalize phrase loudness"
+msgstr "Выровнять громкость фраз"
+
+msgid "Warn about speed-up above"
+msgstr "Предупреждать об ускорении выше"
+
+msgid "Keep project files"
+msgstr "Хранить файлы проекта"
+
+msgid "Makes phrases sound consistently loud in the final track."
+msgstr "Выравнивает громкость фраз в итоговой дорожке."
+
+#, python-format
+msgid "For example, 1.12 means a 12%% speed-up."
+msgstr "Например, 1,12 означает ускорение на 12%%."
+
+msgid "Expired local projects and their files are removed automatically."
+msgstr "Просроченные локальные проекты и их файлы удаляются автоматически."
+
+msgid "Choose a value between 1.00 and 3.00."
+msgstr "Выберите значение от 1,00 до 3,00."
 
 #, python-format
 msgid "Unsupported video format. Allowed formats: %(formats)s."
@@ -47,6 +119,21 @@ msgstr "Новая аудиодорожка"
 msgid "Mix with the original sound"
 msgstr "Наложить поверх исходного звука"
 
+msgid "Original sound volume"
+msgstr "Громкость исходного звука"
+
+msgid "Voiceover volume"
+msgstr "Громкость озвучки"
+
+msgid "Automatically lower the original sound during speech"
+msgstr "Автоматически приглушать исходный звук во время речи"
+
+msgid "Voiceover start offset, seconds"
+msgstr "Задержка начала озвучки, секунды"
+
+msgid "Trim the result to the video duration"
+msgstr "Обрезать результат по длительности видео"
+
 msgid ""
 "When enabled, both tracks will play together. When disabled, the original "
 "video sound will be muted."
@@ -54,17 +141,351 @@ msgstr ""
 "Если включено, обе дорожки будут звучать одновременно. Если выключено, "
 "исходный звук видео будет заглушён."
 
+msgid "Choose a value between 0 and 2."
+msgstr "Выберите значение от 0 до 2."
+
+msgid "Enable mixing with the original sound to use automatic ducking."
+msgstr ""
+"Чтобы использовать автоматическое приглушение, включите смешивание с "
+"исходным звуком."
+
+msgid "Target languages"
+msgstr "Целевые языки"
+
+msgid "Project name"
+msgstr "Название проекта"
+
+msgid "Source script"
+msgstr "Исходный сценарий"
+
+msgid "Or paste the source script"
+msgstr "Или вставьте исходный сценарий"
+
+msgid "Copy timing and export settings to every language"
+msgstr "Скопировать тайминг и настройки экспорта для всех языков"
+
+msgid "Unsupported video format."
+msgstr "Неподдерживаемый формат видео."
+
+msgid "Unsupported script format."
+msgstr "Неподдерживаемый формат сценария."
+
+msgid "Upload or paste the source script."
+msgstr "Загрузите или вставьте исходный сценарий."
+
+msgid "Translated script"
+msgstr "Переведённый сценарий"
+
+msgid "Or paste the translated script"
+msgstr "Или вставьте переведённый сценарий"
+
+msgid "Unsupported audio format."
+msgstr "Неподдерживаемый формат аудио."
+
+msgid "Add the translated script for this language."
+msgstr "Добавьте переведённый сценарий для этого языка."
+
+msgid "Recordings with takes"
+msgstr "Записи с дублями"
+
+msgid "Target video"
+msgstr "Целевое видео"
+
+msgid "Script with target timecodes"
+msgstr "Сценарий с целевыми таймкодами"
+
+msgid "Or paste the script"
+msgstr "Или вставьте сценарий"
+
+msgid "How were the takes recorded?"
+msgstr "Как были записаны дубли?"
+
+msgid "Unsupported recording format."
+msgstr "Неподдерживаемый формат записи."
+
+msgid "Upload or paste the script with target timecodes."
+msgstr "Загрузите или вставьте сценарий с целевыми таймкодами."
+
+msgid "Finished video or audio"
+msgstr "Готовое видео или аудио"
+
+msgid "New phrase"
+msgstr "Новая фраза"
+
+msgid "Interval start, seconds"
+msgstr "Начало интервала, секунды"
+
+msgid "Interval end, seconds"
+msgstr "Конец интервала, секунды"
+
+msgid "Keep the original interval duration"
+msgstr "Сохранить исходную длительность интервала"
+
+msgid "Transition"
+msgstr "Плавный переход"
+
+msgid "New phrase volume"
+msgstr "Громкость новой фразы"
+
+msgid "The interval end must be after its start."
+msgstr "Конец интервала должен находиться после его начала."
+
+msgid "Long voiceover recording"
+msgstr "Длинная запись озвучки"
+
+msgid "By script or subtitles"
+msgstr "По сценарию или субтитрам"
+
+msgid "By long pauses"
+msgstr "По длинным паузам"
+
+msgid "By manually entered intervals"
+msgstr "По заданным вручную интервалам"
+
+msgid "Script or subtitles"
+msgstr "Сценарий или субтитры"
+
+msgid "Minimum pause"
+msgstr "Минимальная пауза"
+
+msgid "Manual intervals"
+msgstr "Интервалы вручную"
+
+msgid ""
+"One interval per line, for example: 00:00.250 --> 00:03.800 First phrase"
+msgstr ""
+"Один интервал на строку, например: 00:00.250 --> 00:03.800 Первая фраза"
+
+msgid "Output format"
+msgstr "Формат результата"
+
+msgid "Add a script or subtitles for script-based splitting."
+msgstr "Для нарезки по сценарию добавьте сценарий или субтитры."
+
+msgid "Enter at least one manual interval."
+msgstr "Введите хотя бы один интервал вручную."
+
+#, python-format
+msgid "Manual intervals could not be parsed: %(error)s"
+msgstr "Не удалось разобрать заданные вручную интервалы: %(error)s"
+
+msgid "Subtitles with timecodes"
+msgstr "Субтитры с таймкодами"
+
+msgid "Voiceover"
+msgstr "Озвучка"
+
+msgid "Up to 12%"
+msgstr "До 12%"
+
+msgid "Up to 20%"
+msgstr "До 20%"
+
+msgid "Fit automatically"
+msgstr "Подогнать автоматически"
+
+msgid "Allowed speed-up"
+msgstr "Допустимое ускорение"
+
+msgid "Voiceover files"
+msgstr "Файлы озвучки"
+
+msgid "Trim silence at the edges"
+msgstr "Обрезать тишину по краям"
+
+msgid "Even out loudness"
+msgstr "Выровнять громкость"
+
+msgid "Prevent clipping"
+msgstr "Предотвратить клиппинг"
+
+msgid "Add soft edges"
+msgstr "Добавить плавные края"
+
+msgid "Loudness target"
+msgstr "Целевая громкость"
+
+msgid "Subtitles"
+msgstr "Субтитры"
+
+msgid "Phrase files"
+msgstr "Файлы фраз"
+
+msgid "Warning threshold"
+msgstr "Порог предупреждения"
+
+msgid "Prepared script"
+msgstr "Подготовленный сценарий"
+
+msgid "Finished voiceover"
+msgstr "Готовая озвучка"
+
+msgid "Subtitle format"
+msgstr "Формат субтитров"
+
+msgid "Audio or video"
+msgstr "Аудио или видео"
+
+msgid "Detect automatically"
+msgstr "Определить автоматически"
+
+msgid "Speech language"
+msgstr "Язык речи"
+
+msgid "Export format"
+msgstr "Формат экспорта"
+
+msgid "Accurate transcript"
+msgstr "Точная расшифровка"
+
+msgid "Readable text"
+msgstr "Читаемый текст"
+
+msgid "Text formatting"
+msgstr "Оформление текста"
+
+msgid "For example: FormaCode, Pulse, FFmpeg, SRT"
+msgstr "Например: FormaCode, Pulse, FFmpeg, SRT"
+
+msgid "Names and special terms"
+msgstr "Имена и специальные термины"
+
+msgid "Divide into paragraphs"
+msgstr "Разделить на абзацы"
+
+msgid "Preserve speaker wording"
+msgstr "Сохранить формулировки говорящего"
+
+msgid "Unsupported audio or video format."
+msgstr "Неподдерживаемый формат аудио или видео."
+
+msgid "Video or audio"
+msgstr "Видео или аудио"
+
+msgid "Voiceover text"
+msgstr "Текст озвучки"
+
+msgid "Paste the text that should be spoken in the video."
+msgstr "Вставьте текст, который должен прозвучать в видео."
+
+msgid "How should timecodes be determined?"
+msgstr "Как определить таймкоды?"
+
+msgid "Add the voiceover text."
+msgstr "Добавьте текст озвучки."
+
+msgid ""
+"The selected file has no audio track. Automatic timing requires audio with "
+"speech."
+msgstr ""
+"В выбранном файле нет аудиодорожки. Для автоматической разметки требуется "
+"аудио с речью."
+
+#, python-format
+msgid "The media file could not be read: %(error)s"
+msgstr "Не удалось прочитать медиафайл: %(error)s"
+
 msgid "Video with the voiceover"
 msgstr "Видео с озвучкой"
 
 msgid "Audio track for YouTube"
 msgstr "Аудиодорожка для YouTube"
 
+msgid "M4A — compact"
+msgstr "M4A — компактный"
+
+msgid "WAV — lossless"
+msgstr "WAV — без потерь"
+
+msgid "7 days"
+msgstr "7 дней"
+
+msgid "30 days"
+msgstr "30 дней"
+
+msgid "90 days"
+msgstr "90 дней"
+
+msgid "Keep until I delete it"
+msgstr "Хранить, пока я не удалю"
+
+msgid "Process project"
+msgstr "Обработать проект"
+
+msgid "Render project"
+msgstr "Собрать проект"
+
+msgid "Queued"
+msgstr "В очереди"
+
+msgid "Running"
+msgstr "Выполняется"
+
+msgid "Complete"
+msgstr "Завершено"
+
+msgid "Failed"
+msgstr "Ошибка"
+
+msgid "Cancelled"
+msgstr "Отменено"
+
+msgid "Each phrase was repeated several times"
+msgstr "Каждая фраза повторялась несколько раз"
+
+msgid "The complete text was read several times"
+msgstr "Весь текст был прочитан несколько раз"
+
+msgid "Determine automatically"
+msgstr "Определить автоматически"
+
+msgid "Audio to text"
+msgstr "Аудио в текст"
+
+msgid "Replace a voiceover fragment"
+msgstr "Заменить фрагмент озвучки"
+
+msgid "Split voiceover into phrases"
+msgstr "Нарезать озвучку на фразы"
+
+msgid "Fit audio to subtitles"
+msgstr "Подогнать аудио под субтитры"
+
+msgid "Prepare voiceover"
+msgstr "Подготовить озвучку"
+
+msgid "Check phrase durations"
+msgstr "Проверить длительность фраз"
+
+msgid "Create synchronized subtitles"
+msgstr "Создать синхронизированные субтитры"
+
+msgid "Manual phrase timing"
+msgstr "Ручное определение таймкодов"
+
+msgid "Automatic phrase timing"
+msgstr "Автоматическое определение таймкодов"
+
+msgid "The text contains no phrases."
+msgstr "В тексте нет фраз."
+
 msgid "Voiceover Studio"
 msgstr "Студия озвучки"
 
+msgid "Unpin sidebar"
+msgstr "Открепить боковую панель"
+
+msgid "Pin sidebar open"
+msgstr "Закрепить панель развёрнутой"
+
+msgid "Expand sidebar"
+msgstr "Развернуть боковую панель"
+
 msgid "Main navigation"
 msgstr "Основная навигация"
+
+msgid "Workflows"
+msgstr "Сценарии"
 
 msgid "My projects"
 msgstr "Мои проекты"
@@ -72,8 +493,11 @@ msgstr "Мои проекты"
 msgid "Tools"
 msgstr "Инструменты"
 
-msgid "Change password"
-msgstr "Сменить пароль"
+msgid "New project"
+msgstr "Новый проект"
+
+msgid "Account settings"
+msgstr "Настройки аккаунта"
 
 msgid "Sign out"
 msgstr "Выйти"
@@ -84,14 +508,37 @@ msgstr "Войти"
 msgid "Create account"
 msgstr "Создать аккаунт"
 
+msgid "Creative workspace"
+msgstr "Рабочее пространство"
+
+msgid "Local processing"
+msgstr "Локальная обработка"
+
 msgid "My projects — Voiceover Studio"
 msgstr "Мои проекты — Студия озвучки"
 
-msgid "Personal account"
-msgstr "Личный кабинет"
+msgid "Project library"
+msgstr "Библиотека проектов"
 
-msgid "New voiceover project"
-msgstr "Новый проект озвучки"
+msgid "Continue your work or start a new voiceover."
+msgstr "Продолжите работу или начните новую озвучку."
+
+msgid "Localization"
+msgstr "Локализация"
+
+#, python-format
+msgid "%(count)s language versions"
+msgstr "Языковых версий: %(count)s"
+
+msgid "Open project"
+msgstr "Открыть проект"
+
+msgid "Takes"
+msgstr "Дубли"
+
+#, python-format
+msgid "%(count)s phrases"
+msgstr "Фраз: %(count)s"
 
 msgid "Ready"
 msgstr "Готов"
@@ -111,24 +558,23 @@ msgstr "Экспорт"
 msgid "Fragments"
 msgstr "Фрагменты"
 
-msgid "Open project"
-msgstr "Открыть проект"
-
 msgid "Edit files"
 msgstr "Редактировать файлы"
 
 msgid "Delete"
 msgstr "Удалить"
 
+msgid "Your workspace"
+msgstr "Ваше рабочее пространство"
+
 msgid "There are no projects yet"
 msgstr "Проектов пока нет"
 
-msgid "Create your first project to recognize, split and mount a voiceover."
-msgstr ""
-"Создайте первый проект, чтобы распознать, нарезать и смонтировать озвучку."
+msgid "Choose a workflow and create your first voiceover project."
+msgstr "Выберите сценарий и создайте первый проект озвучки."
 
-msgid "Create project"
-msgstr "Создать проект"
+msgid "Choose workflow"
+msgstr "Выбрать сценарий"
 
 msgid "Delete project — Voiceover Studio"
 msgstr "Удаление проекта — Студия озвучки"
@@ -156,78 +602,284 @@ msgstr "Отмена"
 msgid "Delete project and files"
 msgstr "Удалить проект и файлы"
 
-msgid "Individual operations"
-msgstr "Отдельные операции"
+msgid "Voice production workspace"
+msgstr "Рабочее пространство для озвучки"
+
+msgid "What do you want to create?"
+msgstr "Что вы хотите создать?"
 
 msgid ""
-"Combine video and audio or run another media operation without starting a "
-"complete voiceover project."
+"Choose a guided workflow for a complete result or open a single-purpose "
+"media tool."
 msgstr ""
-"Объедините видео и аудио или выполните другую операцию с медиа без создания "
-"полного проекта озвучки."
+"Выберите пошаговый сценарий для получения готового результата или откройте "
+"отдельный инструмент для работы с медиа."
 
-msgid "Open tools"
-msgstr "Открыть инструменты"
+msgid "View all projects"
+msgstr "Все проекты"
 
-msgid "Personal voiceover workflow"
-msgstr "Персональный процесс озвучки"
+msgid "Project workflows"
+msgstr "Сценарии проектов"
+
+msgid "A guided path to a finished result"
+msgstr "Пошаговый путь к готовому результату"
+
+msgid "Available"
+msgstr "Доступно"
+
+msgid "Voice a finished video"
+msgstr "Озвучить готовое видео"
 
 msgid ""
-"Prepare a browser-generated or manually recorded voiceover, split it by "
-"video timecodes, and export either a finished video or an audio track for "
-"YouTube."
+"Align a ready voiceover with a video, review phrases and export the final "
+"result."
 msgstr ""
-"Подготовьте озвучку, записанную в браузере или вручную, разделите её по "
-"таймкодам видео и экспортируйте готовое видео или аудиодорожку для YouTube."
+"Синхронизируйте готовую озвучку с видео, проверьте фразы и экспортируйте "
+"результат."
 
-msgid "How it works"
-msgstr "Как это работает"
+msgid "Timecodes"
+msgstr "Таймкоды"
+
+msgid "Review"
+msgstr "Проверка"
+
+msgid "Start project"
+msgstr "Начать проект"
+
+msgid "Localize into several languages"
+msgstr "Локализовать на несколько языков"
 
 msgid ""
-"Prepare the complete voiceover. You may record it with the Tab Sound "
-"Recorder extension and ChatGPT, or upload an audio file made independently."
+"Manage several language versions of one video and export them as a complete "
+"set."
 msgstr ""
-"Подготовьте полную озвучку. Можно записать её с помощью расширения Tab Sound "
-"Recorder и ChatGPT или загрузить аудиофайл, созданный самостоятельно."
+"Управляйте несколькими языковыми версиями одного видео и экспортируйте их "
+"единым комплектом."
+
+msgid "Source"
+msgstr "Исходник"
+
+msgid "Languages"
+msgstr "Языки"
+
+msgid "Open workflow"
+msgstr "Открыть сценарий"
+
+msgid "Assemble voiceover from takes"
+msgstr "Собрать озвучку из дублей"
 
 msgid ""
-"Upload the recording and the source video. The video is required so the "
-"studio can determine the exact duration of the final YouTube audio track."
+"Find repeated takes, compare them phrase by phrase and assemble the best "
+"version."
 msgstr ""
-"Загрузите запись и исходное видео. Видео необходимо, чтобы студия могла "
-"определить точную длительность итоговой аудиодорожки для YouTube."
+"Найдите повторные дубли, сравните их пофразово и соберите лучшую версию."
+
+msgid "Materials"
+msgstr "Материалы"
+
+msgid "Assembly"
+msgstr "Сборка"
+
+msgid "Quick tools"
+msgstr "Быстрые инструменты"
+
+msgid "One task, without creating a project"
+msgstr "Одна задача без создания проекта"
+
+msgid "All tools"
+msgstr "Все инструменты"
+
+msgid "Combine video with audio"
+msgstr "Объединить видео с аудио"
+
+msgid "Replace the original sound or mix two tracks."
+msgstr "Замените исходный звук или смешайте две дорожки."
+
+msgid "Get readable text with punctuation and paragraphs."
+msgstr "Получите читаемый текст со знаками препинания и абзацами."
+
+msgid "Prepare a neatly named set of separate phrases."
+msgstr "Подготовьте аккуратно названный набор отдельных фраз."
+
+msgid "Place a ready voiceover into SRT or VTT intervals."
+msgstr "Расположите готовую озвучку по интервалам SRT или VTT."
+
+msgid "Trim edges, even out loudness and soften transitions."
+msgstr "Обрежьте края, выровняйте громкость и смягчите переходы."
+
+msgid "If the voiceover is not in the media yet"
+msgstr "Если озвучки ещё нет в файле"
+
+msgid "Manual timing"
+msgstr "Ручное определение"
 
 msgid ""
-"The next step will recognize the speech, find real pauses, remove pauses "
-"from fragment edges, and show the resulting fragments for review."
+"Choose this when you need to decide where every prepared phrase should sound "
+"in the video."
 msgstr ""
-"На следующем шаге речь будет распознана, реальные паузы найдены и удалены с "
-"краёв фрагментов, после чего фрагменты можно будет проверить."
+"Выберите этот режим, если нужно самостоятельно определить, где в видео "
+"должна звучать каждая подготовленная фраза."
+
+msgid "You will need"
+msgstr "Понадобится"
+
+msgid "Video or audio and the complete voiceover text"
+msgstr "Видео или аудио и полный текст озвучки"
+
+msgid "If the media already contains the required speech"
+msgstr "Если в файле уже есть нужная речь"
+
+msgid "Automatic timing"
+msgstr "Автоматическое определение"
 
 msgid ""
-"Finally, choose whether to export a finished video or an audio-only track "
-"for an existing YouTube video."
+"Choose this when most phrases are already spoken at the right moments. The "
+"service will find the text and its boundaries."
 msgstr ""
-"В конце выберите, экспортировать ли готовое видео или только аудиодорожку "
-"для уже загруженного видео на YouTube."
+"Выберите этот режим, если большинство фраз уже произнесено в нужные моменты. "
+"Сервис найдёт текст и границы фраз."
 
-msgid "Start"
-msgstr "Начать"
+msgid "Video or audio with speech; a separate text is not required"
+msgstr "Видео или аудио с речью; отдельный текст не требуется"
+
+msgid "Required"
+msgstr "Обязательно"
+
+msgid "Choose video or audio"
+msgstr "Выберите видео или аудио"
+
+msgid "Required for manual timing"
+msgstr "Обязательно для ручного режима"
+
+msgid ""
+"Paste the complete voiceover text. Automatic timing recognizes the text from "
+"the media itself."
+msgstr ""
+"Вставьте полный текст озвучки. В автоматическом режиме текст будет распознан "
+"непосредственно из аудио или видео."
+
+msgid "Voiceover workflow steps"
+msgstr "Этапы сценария озвучки"
+
+msgid "Phrase timecodes"
+msgstr "Таймкоды фраз"
+
+msgid "Review before processing"
+msgstr "Проверка перед обработкой"
+
+msgid "Localization project"
+msgstr "Проект локализации"
+
+msgid "Back to projects"
+msgstr "Назад к проектам"
+
+msgid "Download completed versions"
+msgstr "Скачать готовые версии"
+
+msgid "Multilingual workflow"
+msgstr "Многоязычный сценарий"
+
+msgid ""
+"Add translated text and voiceover separately for every language. Each "
+"version has its own review and export."
+msgstr ""
+"Добавьте переведённый текст и озвучку отдельно для каждого языка. У каждой "
+"версии будут собственные проверка и экспорт."
+
+msgid "Processing status"
+msgstr "Статус обработки"
+
+msgid "Add the translated script and voiceover"
+msgstr "Добавьте переведённый сценарий и озвучку"
+
+msgid "Open review"
+msgstr "Открыть проверку"
+
+msgid "Or paste the translated script with the same timecodes"
+msgstr "Или вставьте переведённый сценарий с теми же таймкодами"
+
+msgid "Replace materials and process again"
+msgstr "Заменить материалы и обработать снова"
+
+msgid "Upload and process"
+msgstr "Загрузить и обработать"
+
+msgid "Multilingual localization — Voiceover Studio"
+msgstr "Многоязычная локализация — Студия озвучки"
+
+msgid "Choose another workflow"
+msgstr "Выбрать другой сценарий"
+
+msgid "Step 1 of 4"
+msgstr "Шаг 1 из 4"
+
+msgid "Add the source materials"
+msgstr "Добавьте исходные материалы"
+
+msgid ""
+"One video and source script will become the basis for every language version."
+msgstr ""
+"Одно видео и исходный сценарий станут основой для всех языковых версий."
+
+msgid "You can still adjust each version separately during review."
+msgstr "Во время проверки каждую версию всё равно можно настроить отдельно."
+
+msgid "The project will keep each language version separately"
+msgstr "Проект будет хранить каждую языковую версию отдельно"
+
+msgid "Create localization project"
+msgstr "Создать проект локализации"
+
+msgid "The result"
+msgstr "Что получится"
+
+msgid "Separate text and audio for every language"
+msgstr "Отдельные текст и аудио для каждого языка"
+
+msgid "Independent review of problem phrases"
+msgstr "Независимая проверка проблемных фраз"
+
+msgid "Batch export with consistent file names"
+msgstr "Пакетный экспорт с единообразными именами файлов"
+
+msgid "New operation"
+msgstr "Новая операция"
+
+msgid "Processing result"
+msgstr "Результат обработки"
+
+msgid "Processing is complete. Check the result before downloading it."
+msgstr "Обработка завершена. Проверьте результат перед скачиванием."
+
+msgid "Download result"
+msgstr "Скачать результат"
+
+msgid "Try again"
+msgstr "Попробовать снова"
+
+msgid "Processing files…"
+msgstr "Обрабатываем файлы…"
+
+msgid "This page will update automatically."
+msgstr "Эта страница обновится автоматически."
+
+msgid "Phrase"
+msgstr "Фраза"
+
+msgid "Audio"
+msgstr "Аудио"
+
+msgid "Result"
+msgstr "Результат"
 
 msgid "Combine video with audio — Voiceover Studio"
 msgstr "Объединение видео с аудио — Студия озвучки"
 
-msgid "Step navigation"
-msgstr "Навигация по шагам"
-
-msgid "Back"
-msgstr "Назад"
-
 msgid "Tool 01"
 msgstr "Инструмент 01"
 
-msgid "Combine video with audio"
-msgstr "Объединить видео с аудио"
+msgid "Quick tool"
+msgstr "Быстрый инструмент"
 
 msgid ""
 "Upload a video and a new audio track. The result will keep the full video "
@@ -236,12 +888,11 @@ msgstr ""
 "Загрузите видео и новую аудиодорожку. Итоговый файл сохранит полную "
 "длительность видео."
 
-msgid "Accepted formats: MP4, WebM, MKV, MOV, AVI, and M4V."
-msgstr "Поддерживаемые форматы: MP4, WebM, MKV, MOV, AVI и M4V."
+msgid "Choose video"
+msgstr "Выбрать видео"
 
-msgid "Accepted formats: MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4, and MKV."
-msgstr ""
-"Поддерживаемые форматы: MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4 и MKV."
+msgid "Choose audio"
+msgstr "Выбрать аудио"
 
 msgid "The original sound will be muted and replaced with the new track."
 msgstr "Исходный звук будет заглушён и заменён новой дорожкой."
@@ -249,14 +900,30 @@ msgstr "Исходный звук будет заглушён и заменён 
 msgid "The new track will play together with the original video sound."
 msgstr "Новая дорожка будет звучать одновременно с исходным звуком видео."
 
+msgid "The original track becomes quieter while the new voice is sounding."
+msgstr "Исходная дорожка становится тише, пока звучит новая озвучка."
+
+msgid ""
+"Disable this only when the audio is intentionally longer than the video."
+msgstr "Отключайте только в том случае, если аудио намеренно длиннее видео."
+
+msgid "Files stay on this computer"
+msgstr "Файлы остаются на этом компьютере"
+
 msgid "Create video"
 msgstr "Создать видео"
 
 msgid "Video processing — Voiceover Studio"
 msgstr "Обработка видео — Студия озвучки"
 
-msgid "Audio"
-msgstr "Аудио"
+msgid "Step navigation"
+msgstr "Навигация по шагам"
+
+msgid "Back to tool"
+msgstr "Вернуться к инструменту"
+
+msgid "Processing workspace"
+msgstr "Обработка файлов"
 
 msgid "Mode"
 msgstr "Режим"
@@ -279,9 +946,6 @@ msgstr "Можно покинуть эту страницу и вернутьс�
 msgid "Processing error"
 msgstr "Ошибка обработки"
 
-msgid "Try again"
-msgstr "Попробовать снова"
-
 msgid "Video is ready"
 msgstr "Видео готово"
 
@@ -291,41 +955,899 @@ msgstr "Исходная длительность видео сохранена.
 msgid "Download video"
 msgstr "Скачать видео"
 
+msgid "Phrase timing — Voiceover Studio"
+msgstr "Разметка фраз по времени — Студия озвучки"
+
+msgid "Phrase timing"
+msgstr "Разметка фраз по времени"
+
+msgid "The original media remains unchanged"
+msgstr "Исходное видео или аудио останется без изменений"
+
+msgid "Media and script"
+msgstr "Видео или аудио и текст"
+
+msgid ""
+"Assign timecodes to phrases while playing video or audio and export the "
+"finished script."
+msgstr ""
+"Расставьте таймкоды фраз при воспроизведении видео или аудио и экспортируйте "
+"готовый текст."
+
+msgid "Source files"
+msgstr "Исходные материалы"
+
+msgid "Prepare the phrase list"
+msgstr "Подготовьте список фраз"
+
+msgid ""
+"Line breaks are kept. Sentences can also be divided automatically before "
+"marking."
+msgstr ""
+"Переносы строк сохранятся. Перед разметкой предложения также могут быть "
+"разделены автоматически."
+
+msgid "The manual timing editor will open immediately."
+msgstr "Редактор ручной разметки откроется сразу."
+
+msgid ""
+"Speech recognition will start. The editor will open automatically when the "
+"timecodes are ready."
+msgstr ""
+"Начнётся распознавание речи. Когда таймкоды будут готовы, редактор откроется "
+"автоматически."
+
+msgid "Open manual timing"
+msgstr "Перейти к ручной разметке"
+
+msgid "Recognize speech and create timecodes"
+msgstr "Распознать речь и создать таймкоды"
+
+msgid "Manual workflow"
+msgstr "Ручная разметка"
+
+msgid "When you need to place the voiceover yourself"
+msgstr "Когда озвучку нужно расположить вручную"
+
+msgid ""
+"Best for a video without finished speech, or when the existing speech does "
+"not provide useful timing."
+msgstr ""
+"Подходит для видео без готовой речи или когда речь в исходнике не позволяет "
+"определить нужные тайминги."
+
+msgid "Add video or audio and the voiceover text"
+msgstr "Добавьте видео или аудио и текст озвучки"
+
+msgid "Click “Open manual timing”"
+msgstr "Нажмите «Перейти к ручной разметке»"
+
+msgid ""
+"Watch the media and mark the moment when each phrase should begin. End "
+"timecodes are optional."
+msgstr ""
+"Просматривайте запись и отмечайте момент, когда должна начаться каждая "
+"фраза. Таймкоды окончания необязательны."
+
+msgid "Review the result and export TXT, SRT or VTT"
+msgstr "Проверьте результат и экспортируйте TXT, SRT или VTT"
+
+msgid "Automatic workflow"
+msgstr "Автоматическая разметка"
+
+msgid "When the required speech is already in the media"
+msgstr "Когда в файле уже звучит нужный текст"
+
+msgid ""
+"Best when most phrases are spoken at approximately the right moments and you "
+"want to obtain their actual boundaries."
+msgstr ""
+"Подходит, если большинство фраз произнесено примерно в нужные моменты и "
+"требуется получить их фактические границы."
+
+msgid "Add video or audio with speech"
+msgstr "Добавьте видео или аудио с речью"
+
+msgid "Click “Recognize speech and create timecodes”"
+msgstr "Нажмите «Распознать речь и создать таймкоды»"
+
+msgid "Wait for recognition — the editor will open automatically"
+msgstr "Дождитесь распознавания — редактор откроется автоматически"
+
+msgid ""
+"Use the quick review to check the detected boundaries, correct them if "
+"needed and export"
+msgstr ""
+"Проверьте найденные границы с помощью быстрой проверки, при необходимости "
+"исправьте их и экспортируйте результат"
+
+msgid "Back to timecode step"
+msgstr "Назад к шагу с таймкодами"
+
+msgid "Go to add voiceover"
+msgstr "Перейти к добавлению озвучки"
+
+msgid "New timing project"
+msgstr "Новая разметка"
+
+msgid ""
+"Plays short fragments at the beginning and end of every marked phrase so you "
+"can quickly hear inaccurate boundaries."
+msgstr ""
+"Воспроизводит короткие фрагменты в начале и конце каждой размеченной фразы, "
+"чтобы вы сразу услышали неточные границы."
+
+msgid "Quick timecode review"
+msgstr "Быстрая проверка таймкодов"
+
+msgid "Pause"
+msgstr "Пауза"
+
+msgid "Continue"
+msgstr "Продолжить"
+
+msgid "Exit review"
+msgstr "Выйти из проверки"
+
+msgid "How to use"
+msgstr "Как пользоваться"
+
+msgid "All changes saved"
+msgstr "Все изменения сохранены"
+
+msgid "VIDEO"
+msgstr "ВИДЕО"
+
+msgid "TEXT"
+msgstr "ТЕКСТ"
+
+msgid "EDITING"
+msgstr "РЕДАКТИРОВАНИЕ"
+
+msgid "Saving…"
+msgstr "Сохраняем…"
+
+msgid "Could not save changes"
+msgstr "Не удалось сохранить изменения"
+
+msgid "Enter — split"
+msgstr "Enter — разделить"
+
+msgid "Enter — merge"
+msgstr "Enter — объединить"
+
+msgid "Split phrase"
+msgstr "Разделить фразу"
+
+msgid "Split the phrase at this point"
+msgstr "Разделить фразу в этом месте"
+
+msgid "Merge with the next phrase"
+msgstr "Объединить со следующей фразой"
+
+msgid "Delete timecode"
+msgstr "Удалить таймкод"
+
+msgid "Delete end timecode"
+msgstr "Удалить таймкод конца"
+
+msgid "Go to timecode"
+msgstr "Перейти к таймкоду"
+
+msgid "approx."
+msgstr "примерно"
+
+msgid "sec."
+msgstr "с"
+
+msgid "Duration"
+msgstr "Длительность"
+
+msgid "No spare time"
+msgstr "Без запаса"
+
+msgid "Short by"
+msgstr "Не хватает"
+
+msgid "The timecode must be between the adjacent phrase timecodes."
+msgstr "Таймкод должен находиться между таймкодами соседних фраз."
+
+msgid ""
+"The end timecode must be after the phrase start and before the video ends."
+msgstr "Таймкод конца должен быть позже начала фразы и раньше окончания видео."
+
+msgid "Selected phrase"
+msgstr "Выбранная фраза"
+
+msgid "Check recognition"
+msgstr "Проверьте распознавание"
+
+msgid "Possible unrecognized speech"
+msgstr "Возможно, нераспознанная речь"
+
+msgid "Listen"
+msgstr "Прослушать"
+
+msgid "Add phrase"
+msgstr "Добавить фразу"
+
+msgid "Merge phrases"
+msgstr "Объединить фразы"
+
+msgid "Edit phrase and timecodes"
+msgstr "Редактировать фразу и таймкоды"
+
+msgid "Set start to current time"
+msgstr "Установить начало по текущему времени"
+
+msgid "Set end to current time"
+msgstr "Установить конец по текущему времени"
+
+msgid "Phrase start time"
+msgstr "Время начала"
+
+msgid "Phrase end time"
+msgstr "Время окончания"
+
+msgid ""
+"Set the phrase end to the current player position. The end timecode is "
+"optional."
+msgstr ""
+"Установить окончание фразы по текущей позиции проигрывателя. Таймкод "
+"окончания необязателен."
+
+msgid ""
+"Estimated time margin for the phrase. A plus shows spare time; “Short by…” "
+"shows how much the estimated voiceover duration exceeds the available "
+"interval."
+msgstr ""
+"Ориентировочная оценка запаса времени на фразу. Плюс показывает запас; «Не "
+"хватает…» — насколько расчётная длительность озвучки превышает доступный "
+"интервал."
+
+msgid "Left-click to move the audio to this timecode."
+msgstr "Щёлкните левой кнопкой мыши, чтобы переместить аудио на этот таймкод."
+
+msgid "Left-click to move the video to this timecode."
+msgstr "Щёлкните левой кнопкой мыши, чтобы переместить видео на этот таймкод."
+
+msgid ""
+"Left-click to move the audio to this timecode. Setting an end timecode is "
+"optional."
+msgstr ""
+"Щёлкните левой кнопкой мыши, чтобы переместить аудио на этот таймкод. "
+"Таймкод окончания необязателен."
+
+msgid ""
+"Left-click to move the video to this timecode. Setting an end timecode is "
+"optional."
+msgstr ""
+"Щёлкните левой кнопкой мыши, чтобы переместить видео на этот таймкод. "
+"Таймкод окончания необязателен."
+
+msgid "Phrase text cannot be empty."
+msgstr "Текст фразы не может быть пустым."
+
+msgid "Enter timecodes in MM:SS.mmm format."
+msgstr "Введите таймкоды в формате ММ:СС.ммм."
+
+msgid "An end timecode can only be set together with a start timecode."
+msgstr "Таймкод конца можно установить только вместе с таймкодом начала."
+
+msgid "phrase start"
+msgstr "начало фразы"
+
+msgid "phrase end"
+msgstr "конец фразы"
+
+msgid "playback"
+msgstr "воспроизведение"
+
+msgid "text"
+msgstr "текст"
+
+msgid "edit"
+msgstr "редактировать"
+
+msgid "boundary"
+msgstr "граница"
+
+msgid "phrase"
+msgstr "фраза"
+
+msgid "Enter — save · Shift+Enter — new line · Esc — cancel"
+msgstr "Enter — сохранить · Shift+Enter — новая строка · Esc — отменить"
+
+msgid "Phrase timecodes overlap"
+msgstr "Тайминги фраз пересекаются"
+
+msgid ""
+"Select a specific phrase, then use I or Enter for its start and O for its "
+"end."
+msgstr ""
+"Выберите конкретную фразу, затем установите её начало клавишей I или Enter, "
+"а конец — клавишей O."
+
+msgid "Play or pause"
+msgstr "Воспроизвести или поставить на паузу"
+
+msgid "Seek media"
+msgstr "Перемотать видео или аудио"
+
+msgid "Play"
+msgstr "Воспроизвести"
+
+msgid "Frame"
+msgstr "Кадр"
+
+msgid "Marked phrases"
+msgstr "Размечено фраз"
+
+msgid "Press Enter when the first phrase should begin."
+msgstr "Нажмите Enter в момент начала первой фразы."
+
+msgid "Current controls"
+msgstr "Текущее управление"
+
+msgid "Voiceover phrases"
+msgstr "Фразы озвучки"
+
+msgid "Undo"
+msgstr "Отменить"
+
+msgid "Redo"
+msgstr "Повторить"
+
+msgid "Edit text"
+msgstr "Редактировать текст"
+
+msgid "Text mode is active"
+msgstr "Режим работы с текстом включён"
+
+msgid ""
+"Use ↑/↓ to move through phrases and the spaces between them. Use ←/→ to "
+"choose a word boundary or an action, then press Enter."
+msgstr ""
+"Клавиши ↑/↓ перемещают по фразам и промежуткам между ними. Клавиши ←/→ "
+"выбирают границу слова или действие, после чего нажмите Enter."
+
+msgid "Return to video"
+msgstr "Вернуться к видео"
+
+msgid "Phrase color guide"
+msgstr "Обозначения цветов фраз"
+
+msgid "Next phrase"
+msgstr "Следующая фраза"
+
+msgid "Enter will mark its start"
+msgstr "Enter отметит её начало"
+
+msgid "Current phrase"
+msgstr "Текущая фраза"
+
+msgid "Its start is already marked"
+msgstr "Её начало уже отмечено"
+
+msgid "I/Enter changes its start, O changes its end"
+msgstr "I/Enter изменяет начало, O — конец"
+
+msgid "Save text"
+msgstr "Сохранить текст"
+
+msgid "Needs attention"
+msgstr "Требует внимания"
+
+msgid "Silero found voice in intervals not covered by recognized words."
+msgstr ""
+"Silero обнаружил голос в интервалах, для которых нет распознанных слов."
+
+msgid "Export timecodes"
+msgstr "Экспорт таймкодов"
+
+msgid "The editor will warn you if some phrases remain unmarked."
+msgstr "Редактор предупредит, если некоторые фразы останутся неразмеченными."
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid ""
+"Enter the phrase text. If its interval was not detected automatically, "
+"select the phrase and set its start with I or Enter."
+msgstr ""
+"Введите текст фразы. Если её интервал не был определён автоматически, "
+"выберите фразу и установите её начало клавишей I или Enter."
+
+msgid "Phrase text"
+msgstr "Текст фразы"
+
+msgid "Edit phrase"
+msgstr "Редактировать фразу"
+
+msgid "Start timecode"
+msgstr "Таймкод начала"
+
+msgid "End timecode"
+msgstr "Таймкод конца"
+
+msgid ""
+"Timecode format: MM:SS.mmm. Leave the fields empty to set the boundaries "
+"later."
+msgstr ""
+"Формат таймкода: ММ:СС.ммм. Оставьте поля пустыми, чтобы установить границы "
+"позже."
+
+msgid "Save changes"
+msgstr "Сохранить изменения"
+
+msgid "Some phrases remain unmarked"
+msgstr "Некоторые фразы остались неразмеченными"
+
+msgid "Unmarked phrases:"
+msgstr "Неразмеченных фраз:"
+
+msgid ""
+"If you export anyway, their text will be joined to the preceding timed "
+"phrase."
+msgstr ""
+"Если продолжить экспорт, их текст будет объединён с предыдущей размеченной "
+"фразой."
+
+msgid ""
+"The first phrase must have a timecode. Assign it before exporting the file."
+msgstr ""
+"У первой фразы обязательно должен быть таймкод. Установите его перед "
+"экспортом файла."
+
+msgid "Show unmarked phrases"
+msgstr "Показать неразмеченные фразы"
+
+msgid "Export anyway"
+msgstr "Всё равно экспортировать"
+
+msgid "PHRASE TIMING"
+msgstr "РАЗМЕТКА ФРАЗ"
+
+msgid "How to use the editor"
+msgstr "Как пользоваться редактором"
+
+msgid ""
+"Start with a quick review of the automatic draft. Correct only the places "
+"that need attention, then export the timecodes."
+msgstr ""
+"Начните с быстрой проверки автоматической разметки. Исправьте только места, "
+"требующие внимания, а затем экспортируйте таймкоды."
+
+msgid ""
+"Play the media once and mark phrase boundaries as you listen. Mouse buttons "
+"are always available; keyboard shortcuts make repeated marking faster."
+msgstr ""
+"Один раз прослушайте запись и по ходу воспроизведения отмечайте границы "
+"фраз. Все действия доступны мышью, а горячие клавиши ускоряют повторяющуюся "
+"разметку."
+
+msgid "Show the guided tour"
+msgstr "Показать пошаговое обучение"
+
+msgid "Short tips directly in the editor"
+msgstr "Короткие подсказки прямо в редакторе"
+
+msgid "How to quickly check automatic timing"
+msgstr "Как быстро проверить автоматическую разметку"
+
+msgid "Basic workflow for manual timing"
+msgstr "Основной порядок ручной разметки"
+
+msgid ""
+"Click “Quick timecode review”. The editor will play the beginning and end of "
+"each detected phrase."
+msgstr ""
+"Нажмите «Быстрая проверка таймкодов». Редактор воспроизведёт начало и конец "
+"каждой найденной фразы."
+
+msgid "Pause the review where something sounds wrong and select that phrase."
+msgstr ""
+"Остановите проверку в месте, где что-то звучит неправильно, и выберите эту "
+"фразу."
+
+msgid ""
+"Left-click its timecode to move to that exact point, then start playback or "
+"use the pencil to correct text and boundaries."
+msgstr ""
+"Щёлкните левой кнопкой мыши по таймкоду, чтобы перейти точно к этой точке, "
+"затем запустите воспроизведение или исправьте текст и границы карандашом."
+
+msgid ""
+"Use the warning list only for fragments where speech may not have been "
+"recognized."
+msgstr ""
+"Список предупреждений понадобится только для фрагментов, в которых речь "
+"могла остаться нераспознанной."
+
+msgid "Start playback with the large button, Space or K."
+msgstr "Запустите воспроизведение большой кнопкой, клавишей Space или K."
+
+msgid ""
+"When the next phrase begins, press Enter or I, or click “Start” in its card."
+msgstr ""
+"Когда начнётся следующая фраза, нажмите Enter или I либо кнопку «Начало» в "
+"её карточке."
+
+msgid ""
+"If you need an exact phrase end, press O or click “End”. End timecodes are "
+"optional."
+msgstr ""
+"Если нужно точно указать окончание фразы, нажмите O или кнопку «Время "
+"окончания». Таймкоды окончания необязательны."
+
+msgid ""
+"Left-click any saved timecode to move to that point, then start playback to "
+"check the boundary."
+msgstr ""
+"Щёлкните левой кнопкой мыши по сохранённому таймкоду, чтобы перейти к этой "
+"точке, затем запустите воспроизведение и проверьте границу."
+
+msgid "Playback and precise navigation"
+msgstr "Воспроизведение и точная навигация"
+
+msgid "Playback"
+msgstr "Воспроизведение"
+
+msgid "Back or forward 10 seconds"
+msgstr "Назад или вперёд на 10 секунд"
+
+msgid "Previous or next frame"
+msgstr "Предыдущий или следующий кадр"
+
+msgid "Go to a timecode"
+msgstr "Перейти к таймкоду"
+
+msgid ""
+"Left-click a timecode in a phrase card to move the audio to that position."
+msgstr ""
+"Щёлкните левой кнопкой мыши по таймкоду в карточке фразы, чтобы переместить "
+"аудио на эту позицию."
+
+msgid ""
+"Left-click a timecode in a phrase card to move the video to that position."
+msgstr ""
+"Щёлкните левой кнопкой мыши по таймкоду в карточке фразы, чтобы переместить "
+"видео на эту позицию."
+
+msgid ""
+"Click a phrase card to select it; click it again or press Esc to clear the "
+"selection. Enter, I and O apply to the selected phrase first. If no phrase "
+"is selected, Enter marks the beginning of the next phrase."
+msgstr ""
+"Щёлкните по карточке фразы, чтобы выделить её; щёлкните ещё раз или нажмите "
+"Esc, чтобы снять выделение. Enter, I и O в первую очередь действуют на "
+"выделенную фразу. Если ничего не выделено, Enter отмечает начало следующей "
+"фразы."
+
+msgid ""
+"Enter or I sets the start; O sets the end. The “Start” and “End” buttons do "
+"the same using the current player position."
+msgstr ""
+"Enter или I устанавливает начало, O — окончание. Кнопки «Время начала» и "
+"«Время окончания» делают то же самое по текущей позиции проигрывателя."
+
+msgid "The end timecode is optional."
+msgstr "Таймкод окончания необязателен."
+
+msgid "Editing text and phrase structure"
+msgstr "Редактирование текста и структуры фраз"
+
+msgid ""
+"Use the pencil on a phrase to edit its text and both timecodes. Use “Edit "
+"text” or E when you need to revise the complete script."
+msgstr ""
+"Карандаш в карточке позволяет изменить текст фразы и оба таймкода. Если "
+"нужно исправить весь сценарий, нажмите «Редактировать текст» или E."
+
+msgid ""
+"With the mouse, point between words to split a phrase, or between phrase "
+"cards to merge them or add a new phrase."
+msgstr ""
+"При работе мышью наведите курсор между словами, чтобы разделить фразу, или "
+"между карточками фраз, чтобы объединить их либо добавить новую фразу."
+
+msgid ""
+"For keyboard control, press T. Arrows choose a word boundary or the space "
+"between phrases; Enter performs the highlighted split, merge or add action."
+msgstr ""
+"Для управления с клавиатуры нажмите T. Стрелки выбирают границу слова или "
+"промежуток между фразами, а Enter выполняет выделенное действие: разделение, "
+"объединение или добавление."
+
+msgid "Undo, redo and keyboard shortcuts"
+msgstr "Отмена, повтор и горячие клавиши"
+
+msgid "Changes"
+msgstr "Изменения"
+
+msgid "Edit all text"
+msgstr "Редактировать весь текст"
+
+msgid "Text mode"
+msgstr "Режим текста"
+
+msgid "Switch to text navigation"
+msgstr "Перейти к навигации по тексту"
+
+msgid "Choose a word boundary or an action"
+msgstr "Выбрать границу слова или действие"
+
+msgid "Move through phrases and spaces between them"
+msgstr "Перемещаться по фразам и промежуткам между ними"
+
+msgid "Perform the selected action"
+msgstr "Выполнить выбранное действие"
+
+msgid "Return to video controls"
+msgstr "Вернуться к управлению видео"
+
+msgid "Play and pause without reaching for the mouse"
+msgstr "Запускайте и ставьте на паузу с клавиатуры"
+
+msgid ""
+"Use the large player button or press Space or K. J and L move ten seconds; "
+"the arrow keys move one frame."
+msgstr ""
+"Используйте большую кнопку проигрывателя либо Space или K. Клавиши J и L "
+"перемещают на десять секунд, стрелки — на один кадр."
+
+msgid "Edit text in two ways"
+msgstr "Редактируйте текст двумя способами"
+
+msgid ""
+"The pencil edits one phrase and its timecodes. “Edit text” or E opens the "
+"complete recognized script."
+msgstr ""
+"Карандаш изменяет отдельную фразу и её таймкоды. Кнопка «Редактировать "
+"текст» или E открывает весь распознанный сценарий."
+
+msgid ""
+"The pencil edits one phrase and its timecodes. “Edit text” or E opens the "
+"complete script."
+msgstr ""
+"Карандаш изменяет отдельную фразу и её таймкоды. Кнопка «Редактировать "
+"текст» или E открывает весь сценарий."
+
+msgid "Set the phrase boundaries"
+msgstr "Устанавливайте границы фразы"
+
+msgid ""
+"At the right moment, click “Start” or “End” in the phrase card. For faster "
+"work, use Enter or I for the start and O for the end. The end timecode is "
+"optional: if you do not set it, it will be calculated from the start "
+"timecode of the next phrase."
+msgstr ""
+"В нужный момент нажмите «Начало» или «Конец» в карточке фразы. Для быстрой "
+"работы используйте Enter или I для начала и O для конца. Таймкод окончания "
+"необязателен: если его не задать, окончание фразы будет рассчитано по "
+"таймкоду начала следующей."
+
+msgid "Estimated time margin"
+msgstr "Ориентировочный запас времени"
+
+msgid ""
+"This value compares the available phrase interval with the estimated speech "
+"duration. A plus shows spare time; “Short by…” is a guide to the speed "
+"adjustment that may be needed later."
+msgstr ""
+"Показатель сравнивает доступный интервал фразы с расчётной длительностью "
+"речи. Плюс показывает запас времени; «Не хватает…» помогает оценить "
+"ускорение, которое может понадобиться позднее."
+
+msgid "Example from this phrase"
+msgstr "Пример из этой фразы"
+
+msgid "Check any boundary immediately"
+msgstr "Сразу проверяйте любую границу"
+
+msgid ""
+"Click a saved timecode in a phrase card to move the audio to that exact "
+"point and verify the boundary."
+msgstr ""
+"Нажмите на сохранённый таймкод в карточке фразы, чтобы переместить аудио "
+"точно к этой точке и проверить границу."
+
+msgid ""
+"Click a saved timecode in a phrase card to move the video to that exact "
+"point and verify the boundary."
+msgstr ""
+"Нажмите на сохранённый таймкод в карточке фразы, чтобы переместить видео "
+"точно к этой точке и проверить границу."
+
+msgid "Click the timecode"
+msgstr "Нажмите на таймкод"
+
+msgid "Split, merge or add phrases"
+msgstr "Разделяйте, объединяйте и добавляйте фразы"
+
+msgid ""
+"Press T for text mode. Arrows choose a word boundary or the space between "
+"phrases; Enter performs the highlighted action. The same buttons work with "
+"the mouse."
+msgstr ""
+"Нажмите T, чтобы включить режим текста. Стрелки выбирают границу слова или "
+"промежуток между фразами, а Enter выполняет выделенное действие. Те же "
+"кнопки доступны для мыши."
+
+msgid "Mistakes are easy to undo"
+msgstr "Любое изменение легко отменить"
+
+msgid ""
+"Use the visible Undo and Redo buttons, or the familiar keyboard shortcuts. "
+"The project is saved automatically as you work."
+msgstr ""
+"Используйте заметные кнопки «Отменить» и «Повторить» либо привычные горячие "
+"клавиши. Во время работы проект сохраняется автоматически."
+
+msgid "The complete guide is always here"
+msgstr "Полная справка всегда под рукой"
+
+msgid ""
+"Open “How to use” whenever you need a reminder. It contains the recommended "
+"workflow, mouse actions, keyboard shortcuts and tips for checking the result."
+msgstr ""
+"Откройте «Как пользоваться», если понадобится что-то вспомнить. Там собраны "
+"рекомендуемый порядок работы, действия мышью, горячие клавиши и советы по "
+"проверке результата."
+
+msgid "QUICK START"
+msgstr "БЫСТРЫЙ СТАРТ"
+
+msgid "Do not show this tour again"
+msgstr "Больше не показывать это обучение"
+
+msgid "Back"
+msgstr "Назад"
+
+msgid "Skip"
+msgstr "Пропустить"
+
+msgid "Next"
+msgstr "Далее"
+
+msgid "Automatic phrase timing — Voiceover Studio"
+msgstr "Автоматическая разметка фраз — Студия озвучки"
+
+msgid "Preparing audio for speech recognition…"
+msgstr "Подготавливаем аудио к распознаванию речи…"
+
+msgid "Creating phrase timecodes"
+msgstr "Создаём таймкоды фраз"
+
+msgid "You can leave this page. Processing continues in the background."
+msgstr "Эту страницу можно закрыть. Обработка продолжится в фоновом режиме."
+
+msgid "Preparing audio…"
+msgstr "Подготавливаем аудио…"
+
+msgid "Recognizing speech and word timecodes…"
+msgstr "Распознаём речь и таймкоды слов…"
+
+msgid "Checking for possibly unrecognized speech…"
+msgstr "Проверяем, не осталась ли речь нераспознанной…"
+
+msgid "Automatic timing failed."
+msgstr "Не удалось выполнить автоматическую разметку."
+
+msgid "Processing stopped"
+msgstr "Обработка остановлена"
+
+msgid "Recognizing a long recording…"
+msgstr "Распознаём длинную запись…"
+
+msgid "Processing…"
+msgstr "Обрабатываем…"
+
 msgid "Project — Voiceover Studio"
 msgstr "Проект — Студия озвучки"
 
-msgid "Files received"
-msgstr "Файлы получены"
+msgid "Voiceover project"
+msgstr "Проект озвучки"
 
-msgid "Project ready for processing"
-msgstr "Проект готов к обработке"
+msgid "Back to voiceover"
+msgstr "Вернуться к озвучке"
 
-msgid "Voiceover"
-msgstr "Озвучка"
+msgid "All previously entered data is saved"
+msgstr "Все введённые ранее данные сохранены"
 
-msgid "Timecodes"
-msgstr "Таймкоды"
+msgid "Project workspace"
+msgstr "Рабочее пространство проекта"
 
-msgid "Entered manually"
-msgstr "Введены вручную"
+msgid "Final check"
+msgstr "Проверка перед запуском"
+
+msgid "Created automatically"
+msgstr "Созданы автоматически"
+
+msgid "Created manually in the timing editor"
+msgstr "Созданы вручную в редакторе таймкодов"
+
+msgid "Imported from a file"
+msgstr "Импортированы из файла"
+
+msgid "Entered as text"
+msgstr "Введены текстом"
+
+msgid "Storage"
+msgstr "Хранение"
+
+#, python-format
+msgid "Automatic deletion after %(days)s days"
+msgstr "Автоматическое удаление через %(days)s дней"
+
+msgid "Until manual deletion"
+msgstr "До ручного удаления"
+
+msgid "Project folder"
+msgstr "Папка проекта"
+
+msgid "Export folder"
+msgstr "Папка экспорта"
 
 msgid "Building final result"
-msgstr ""
+msgstr "Собираем итоговый результат"
 
 msgid "Preparing voiceover"
 msgstr "Подготавливаем озвучку"
 
-msgid "Process again"
-msgstr "Обработать заново"
+msgid "Cancel processing"
+msgstr "Отменить обработку"
 
-msgid "Recognize and split audio"
-msgstr "Распознать и нарезать аудио"
+msgid "The phrase changes have not been applied yet"
+msgstr "Изменения фраз ещё не применены"
 
-msgid "Result"
-msgstr "Результат"
+msgid ""
+"Apply them to update the affected audio fragments. Existing manual "
+"boundaries and individual audio replacements will be preserved."
+msgstr ""
+"Примените изменения, чтобы обновить затронутые аудиофрагменты. Ручные "
+"границы и отдельные замены аудио будут сохранены."
 
-msgid "Download result"
-msgstr "Скачать результат"
+msgid "Cut audio into phrases"
+msgstr "Нарезать аудио на фразы"
+
+msgid "Recognize and cut audio into phrases"
+msgstr "Распознать и нарезать аудио на фразы"
+
+msgid "Apply phrase changes"
+msgstr "Применить изменения фраз"
+
+msgid "Repeated cutting"
+msgstr "Повторная нарезка"
+
+msgid "How should the audio be cut?"
+msgstr "Как заново нарезать аудио?"
+
+msgid "Cut again and keep manual edits"
+msgstr "Перенарезать, сохранив ручные правки"
+
+msgid ""
+"The studio will use the saved recognition, cut all phrases again, and keep "
+"manually adjusted boundaries and uploaded phrase replacements."
+msgstr ""
+"Студия использует сохранённое распознавание, заново нарежет все фразы и "
+"сохранит вручную скорректированные границы и загруженные замены фраз."
+
+msgid "Reset manual edits and cut again"
+msgstr "Сбросить ручные правки и перенарезать"
+
+msgid ""
+"Manual boundaries and uploaded replacements will be removed. Speech will not "
+"be sent to Groq again."
+msgstr ""
+"Ручные границы и загруженные замены будут удалены. Повторно отправлять речь "
+"в Groq не потребуется."
+
+msgid "Retry"
+msgstr "Повторить"
+
+msgid "Separate clips"
+msgstr "Отдельные фрагменты"
 
 msgid "Voiceover fragments"
 msgstr "Фрагменты озвучки"
@@ -337,11 +1859,20 @@ msgstr ""
 "Прослушайте каждый фрагмент. Совпадения с низкой уверенностью выделены — их "
 "нужно проверить особенно внимательно."
 
+#, python-format
+msgid "Problem fragments: %(problem_count)s"
+msgstr "Проблемных фрагментов: %(problem_count)s"
+
+msgid "Show only problems"
+msgstr "Показать только проблемные"
+
 msgid "When all fragments are correct, build the final audio track or video."
 msgstr ""
+"Когда все фрагменты будут проверены, соберите итоговую аудиодорожку или "
+"видео."
 
 msgid "Build final result"
-msgstr ""
+msgstr "Собрать итоговый результат"
 
 msgid "Match"
 msgstr "Совпадение"
@@ -352,8 +1883,20 @@ msgstr "Скорость"
 msgid "Replacement audio"
 msgstr "Заменяющее аудио"
 
-msgid "Play"
-msgstr "Воспроизвести"
+msgid "Phrase not found"
+msgstr "Фраза не найдена"
+
+msgid "Low confidence"
+msgstr "Низкая уверенность"
+
+msgid "Strong speed-up"
+msgstr "Сильное ускорение"
+
+msgid "Overlap"
+msgstr "Пересечение"
+
+msgid "Edit phrase text"
+msgstr "Редактировать текст фразы"
 
 msgid "Playback position"
 msgstr "Позиция воспроизведения"
@@ -379,8 +1922,11 @@ msgstr "Заменить аудио"
 msgid "Loading audio editor…"
 msgstr "Загружаем редактор аудио…"
 
-msgid "Recalculating this phrase and following fragments…"
-msgstr "Пересчитываем эту и следующие фразы…"
+msgid "Saving"
+msgstr "Сохраняем"
+
+msgid "Please wait"
+msgstr "Пожалуйста, подождите"
 
 msgid "Apply the selected boundary before saving."
 msgstr "Примените выбранную границу перед сохранением."
@@ -406,9 +1952,6 @@ msgstr "Выйти без сохранения"
 
 msgid "Previous phrase"
 msgstr "Предыдущая фраза"
-
-msgid "Next phrase"
-msgstr "Следующая фраза"
 
 msgid "Cursor position"
 msgstr "Позиция указателя"
@@ -437,17 +1980,227 @@ msgstr "Зафиксировать конец"
 msgid "Apply"
 msgstr "Применить"
 
-msgid "Undo"
-msgstr "Отменить"
-
-msgid "Redo"
-msgstr "Повторить"
-
 msgid "Phrase is absent — skip"
 msgstr "Фразы нет в записи — пропустить"
 
 msgid "Save and exit"
 msgstr "Сохранить и выйти"
+
+msgid "Show all fragments"
+msgstr "Показать все фрагменты"
+
+msgid "Phrase timecodes — Voiceover Studio"
+msgstr "Разметка фраз по времени — Студия озвучки"
+
+msgid "Back to source video"
+msgstr "Назад к исходному видео"
+
+msgid "Draft saved automatically"
+msgstr "Черновик сохраняется автоматически"
+
+#, fuzzy
+#| msgid "Continue to timecodes"
+msgid "Continue with saved timecodes"
+msgstr "Продолжить к таймкодам"
+
+msgid "Guided workflow"
+msgstr "Пошаговый сценарий"
+
+msgid "Step 2 of 3"
+msgstr "Шаг 2 из 3"
+
+msgid "Create phrase timecodes"
+msgstr "Создайте таймкоды фраз"
+
+msgid ""
+"Choose manual or automatic timing. The source video is already connected to "
+"the editor."
+msgstr ""
+"Выберите ручное или автоматическое определение. Исходное видео уже "
+"подключено к редактору."
+
+msgid "Saved timecodes"
+msgstr "Сохранённые таймкоды"
+
+msgid "Open saved timecodes"
+msgstr "Открыть сохранённые таймкоды"
+
+msgid "Replace timecodes"
+msgstr "Заменить таймкоды"
+
+msgid "The actions below create a new result and replace the saved timecodes."
+msgstr "Действия ниже создадут новый результат и заменят сохранённые таймкоды."
+
+msgid "Create new manual timing"
+msgstr "Создать новую ручную разметку"
+
+msgid "Recognize again and create new timecodes"
+msgstr "Распознать заново и создать новые таймкоды"
+
+msgid "or use a prepared result"
+msgstr "или используйте готовый результат"
+
+msgid "or"
+msgstr "или"
+
+msgid "TXT, SRT, VTT or CSV"
+msgstr "TXT, SRT, VTT или CSV"
+
+msgid "Use prepared timecodes"
+msgstr "Использовать готовые таймкоды"
+
+msgid "Source video added"
+msgstr "Исходное видео добавлено"
+
+msgid "No duplicate editor"
+msgstr "Единый редактор"
+
+msgid ""
+"Changes made to the phrase timing tool automatically apply to this workflow "
+"step."
+msgstr ""
+"Изменения инструмента разметки фраз автоматически применяются и к этому шагу "
+"сценария."
+
+msgid "Choose a workflow — Voiceover Studio"
+msgstr "Выбор сценария — Студия озвучки"
+
+msgid "The workflow can also be seen in the project library"
+msgstr "Сценарий также будет виден в библиотеке проектов"
+
+msgid "Choose how you want to work"
+msgstr "Выберите сценарий работы"
+
+msgid "Each workflow keeps only the steps and settings needed for its result."
+msgstr ""
+"В каждом сценарии остаются только нужные для его результата шаги и настройки."
+
+msgid "Takes project"
+msgstr "Проект с дублями"
+
+msgid "Production workflow"
+msgstr "Сценарий для продакшена"
+
+msgid ""
+"Choose exactly one take for every phrase. You can listen and adjust its "
+"source boundaries before assembly."
+msgstr ""
+"Выберите ровно один дубль для каждой фразы. Перед сборкой его можно "
+"прослушать и скорректировать исходные границы."
+
+msgid "Find takes"
+msgstr "Найти дубли"
+
+msgid "Selection"
+msgstr "Выбор"
+
+msgid "Finding repeated phrases…"
+msgstr "Ищем повторные фразы…"
+
+#, python-format
+msgid "Selected: %(selected)s of %(total)s"
+msgstr "Выбрано: %(selected)s из %(total)s"
+
+msgid "Assemble voiceover"
+msgstr "Собрать озвучку"
+
+#, python-format
+msgid "%(count)s takes"
+msgstr "Дублей: %(count)s"
+
+#, python-format
+msgid "Take %(number)s"
+msgstr "Дубль %(number)s"
+
+msgid "Selected"
+msgstr "Выбран"
+
+msgid "Use this take"
+msgstr "Выбрать этот дубль"
+
+msgid "Adjust boundaries"
+msgstr "Уточнить границы"
+
+msgid "Start"
+msgstr "Начало"
+
+msgid "End"
+msgstr "Конец"
+
+msgid "Cut again"
+msgstr "Обрезать заново"
+
+msgid "No take was found. Rerecord this phrase or check its text."
+msgstr "Дубли не найдены. Перезапишите эту фразу или проверьте её текст."
+
+msgid "Voiceover from takes — Voiceover Studio"
+msgstr "Озвучка из дублей — Студия озвучки"
+
+msgid "Add the session materials"
+msgstr "Добавьте материалы сессии"
+
+msgid ""
+"The studio will find repeated phrases in the recordings and connect them to "
+"target video intervals."
+msgstr ""
+"Студия найдёт повторные фразы в записях и свяжет их с целевыми интервалами "
+"видео."
+
+msgid ""
+"Upload one long session, one file with several full readings, or several "
+"complete readings."
+msgstr ""
+"Загрузите длинную сессию, один файл с несколькими полными прочтениями или "
+"несколько отдельных прочтений."
+
+msgid "You will verify every uncertain fragment before assembly"
+msgstr "Перед сборкой вы проверите каждый неоднозначный фрагмент"
+
+msgid "Listen to every take"
+msgstr "Прослушать каждый дубль"
+
+msgid "Compare duration and required speed"
+msgstr "Сравнить длительность и необходимое ускорение"
+
+msgid "Adjust boundaries and identify phrases that need rerecording"
+msgstr "Скорректировать границы и отметить фразы, которые нужно перезаписать"
+
+msgid "Tool"
+msgstr "Инструмент"
+
+msgid "Single-purpose tool"
+msgstr "Однозадачный инструмент"
+
+msgid "Files and settings"
+msgstr "Файлы и настройки"
+
+msgid "Prepare the operation"
+msgstr "Подготовьте операцию"
+
+msgid ""
+"Files are processed in a background job. You can leave the result page and "
+"return later."
+msgstr ""
+"Файлы обрабатываются в фоновом режиме. Можно закрыть страницу результата и "
+"вернуться позже."
+
+msgid "Original files will not be changed"
+msgstr "Исходные файлы не изменятся"
+
+msgid "Start processing"
+msgstr "Начать обработку"
+
+msgid "How it works"
+msgstr "Как это работает"
+
+msgid "Add the source files"
+msgstr "Добавьте исходные файлы"
+
+msgid "Configure only the necessary settings"
+msgstr "Настройте только необходимые параметры"
+
+msgid "Preview and download the result"
+msgstr "Проверьте и скачайте результат"
 
 msgid "Tools — Voiceover Studio"
 msgstr "Инструменты — Студия озвучки"
@@ -456,116 +2209,410 @@ msgid "Media utilities"
 msgstr "Работа с медиа"
 
 msgid ""
-"Run individual audio and video operations without creating a voiceover "
-"project."
+"Upload files, configure one operation and get the result — without creating "
+"a project."
 msgstr ""
-"Выполняйте отдельные операции с аудио и видео без создания проекта озвучки."
+"Загрузите файлы, настройте одну операцию и получите результат — без создания "
+"проекта."
+
+msgid "One tool — one finished task"
+msgstr "Один инструмент — одна готовая задача"
+
+msgid "Available now"
+msgstr "Доступно сейчас"
+
+msgid "Video, audio and text"
+msgstr "Видео, аудио и текст"
 
 msgid ""
-"Replace the original video sound with another track or mix both tracks "
-"together."
-msgstr "Замените исходный звук видео другой дорожкой или смешайте обе дорожки."
+"Replace the original sound, keep it in the mix and later adjust the balance "
+"between both tracks."
+msgstr ""
+"Замените исходный звук, оставьте его в миксе, а позже настройте баланс обеих "
+"дорожек."
+
+msgid "Replace sound"
+msgstr "Заменить звук"
+
+msgid "Mix tracks"
+msgstr "Смешать дорожки"
+
+msgid "Keep video quality"
+msgstr "Сохранить качество видео"
 
 msgid "Open tool"
 msgstr "Открыть инструмент"
 
+msgid ""
+"Turn speech from an audio or video file into readable text with punctuation "
+"and paragraphs."
+msgstr ""
+"Превратите речь из аудио или видео в читаемый текст со знаками препинания и "
+"абзацами."
+
+msgid "Punctuation"
+msgstr "Пунктуация"
+
+msgid "Paragraphs"
+msgstr "Абзацы"
+
+msgid ""
+"Watch the video once and assign timecodes to prepared phrases with the "
+"keyboard."
+msgstr ""
+"Посмотрите видео один раз и присвойте таймкоды подготовленным фразам с "
+"клавиатуры."
+
+msgid "Fast marking"
+msgstr "Быстрая разметка"
+
+msgid "SRT and VTT"
+msgstr "SRT и VTT"
+
+msgid "Keyboard control"
+msgstr "Управление с клавиатуры"
+
+msgid "Focused audio operations"
+msgstr "Точечная работа с аудио"
+
+msgid ""
+"Select one interval, add a new phrase and listen to the transition before "
+"saving the updated file."
+msgstr ""
+"Выберите один интервал, добавьте новую фразу и прослушайте стык перед "
+"сохранением обновлённого файла."
+
+msgid "One precise replacement"
+msgstr "Одна точная замена"
+
+msgid "Transition preview"
+msgstr "Прослушивание стыка"
+
+msgid ""
+"Split a long recording by script, subtitles, pauses or manually adjusted "
+"boundaries."
+msgstr ""
+"Разделите длинную запись по сценарию, субтитрам, паузам или вручную "
+"уточнённым границам."
+
+msgid "Named files"
+msgstr "Понятные имена файлов"
+
+msgid ""
+"Place a single recording or a set of phrases into prepared SRT or VTT time "
+"intervals."
+msgstr ""
+"Расположите единую запись или набор фраз по готовым временным интервалам SRT "
+"или VTT."
+
+msgid "Timing control"
+msgstr "Контроль тайминга"
+
+msgid "Speed warnings"
+msgstr "Предупреждения об ускорении"
+
+msgid ""
+"Prepare one file or a whole set: trim edge silence, normalize loudness, "
+"prevent clipping and add soft fades."
+msgstr ""
+"Подготовьте один файл или целый набор: обрежьте тишину по краям, выровняйте "
+"громкость, исключите клиппинг и добавьте плавные края."
+
+msgid "Batch processing"
+msgstr "Пакетная обработка"
+
+msgid "Optional WAV"
+msgstr "При необходимости — WAV"
+
+msgid ""
+"Compare subtitles with a folder of phrases and see where audio will not fit "
+"before assembly."
+msgstr ""
+"Сравните субтитры с папкой фраз и заранее увидьте, какое аудио не поместится "
+"при сборке."
+
+msgid "Problem table"
+msgstr "Таблица проблем"
+
+msgid "Batch check"
+msgstr "Пакетная проверка"
+
+msgid ""
+"Turn a prepared script and finished voiceover into subtitles with accurate "
+"timecodes."
+msgstr ""
+"Превратите подготовленный сценарий и готовую озвучку в субтитры с точными "
+"таймкодами."
+
+msgid "SRT and VTT export"
+msgstr "Экспорт SRT и VTT"
+
+msgid "Text matching"
+msgstr "Сопоставление текста"
+
+msgid "Audio to text — Voiceover Studio"
+msgstr "Аудио в текст — Студия озвучки"
+
+msgid "The original file remains unchanged"
+msgstr "Исходный файл останется без изменений"
+
+msgid "Speech recognition"
+msgstr "Распознавание речи"
+
+msgid ""
+"Get a clean, readable transcript from audio or video — with punctuation, "
+"paragraphs and your terminology."
+msgstr ""
+"Получите из аудио или видео чистый читаемый текст — с пунктуацией, абзацами "
+"и вашей терминологией."
+
+msgid "Source and text style"
+msgstr "Исходник и оформление текста"
+
+msgid "Prepare the transcript"
+msgstr "Подготовьте расшифровку"
+
+msgid "Choose a file and how carefully the result should be formatted."
+msgstr "Выберите файл и степень оформления результата."
+
+msgid "Choose an audio or video file"
+msgstr "Выберите аудио- или видеофайл"
+
+msgid "Preserves the recognized wording with only basic punctuation."
+msgstr ""
+"Сохраняет распознанные формулировки, добавляя только базовую пунктуацию."
+
+msgid "Recommended"
+msgstr "Рекомендуется"
+
+msgid ""
+"Adds careful punctuation and divides the speech into meaningful paragraphs "
+"without rewriting it."
+msgstr ""
+"Расставляет пунктуацию и делит речь на смысловые абзацы, не переписывая её."
+
+msgid "Optional"
+msgstr "Необязательно"
+
+msgid ""
+"Add names, brands, abbreviations or professional terms that must be "
+"recognized correctly."
+msgstr ""
+"Добавьте имена, бренды, сокращения или профессиональные термины, которые "
+"важно распознать правильно."
+
+msgid "Use meaning and natural pauses in speech"
+msgstr "Учитывать смысл и естественные паузы в речи"
+
+msgid "Do not paraphrase, shorten or add words"
+msgstr "Не перефразировать, не сокращать и не добавлять слова"
+
+msgid "Timecodes are kept internally but will not clutter the text"
+msgstr "Таймкоды сохранятся внутри, но не будут загромождать текст"
+
+msgid "Transcribe"
+msgstr "Расшифровать"
+
+msgid "Punctuation and capital letters"
+msgstr "Знаки препинания и заглавные буквы"
+
+msgid "Paragraphs instead of a wall of text"
+msgstr "Абзацы вместо сплошной стены текста"
+
+msgid "Copying and export in one click"
+msgstr "Копирование и экспорт в один клик"
+
+msgid "Two text styles"
+msgstr "Два варианта оформления"
+
+msgid "Accurate"
+msgstr "Точный"
+
+msgid "As close as possible to the recognized speech."
+msgstr "Максимально близко к распознанной речи."
+
+msgid "Readable"
+msgstr "Читаемый"
+
+msgid "Additional punctuation and paragraphs without changing the meaning."
+msgstr "Дополнительная пунктуация и абзацы без изменения смысла."
+
+msgid "Transcript"
+msgstr "Расшифровка"
+
+msgid "Result text"
+msgstr "Готовый текст"
+
+msgid "Copy"
+msgstr "Копировать"
+
+msgid "Download"
+msgstr "Скачать"
+
+msgid ""
+"The accurate transcript was saved because additional formatting could not be "
+"safely applied."
+msgstr ""
+"Сохранена точная расшифровка: дополнительное оформление не удалось применить "
+"безопасно."
+
+msgid "Copy text"
+msgstr "Копировать текст"
+
+msgid "Download TXT"
+msgstr "Скачать TXT"
+
+msgid "Download DOCX"
+msgstr "Скачать DOCX"
+
+msgid "Transcription failed"
+msgstr "Не удалось распознать речь"
+
+msgid "Recognizing and formatting speech…"
+msgstr "Распознаём и оформляем текст…"
+
+msgid "The recognized text will appear here"
+msgstr "Здесь появится распознанный текст"
+
+msgid "You will be able to edit it, copy it or download it as a document."
+msgstr "Его можно будет отредактировать, скопировать или скачать как документ."
+
 msgid "Upload voiceover — Voiceover Studio"
 msgstr "Загрузка озвучки — Студия озвучки"
 
-msgid "Forward"
-msgstr "Вперёд"
+msgid "Back to timecodes"
+msgstr "Назад к таймкодам"
 
-msgid "Step 1 of 2"
-msgstr "Шаг 1 из 2"
+msgid "Go to review before processing"
+msgstr "Перейти к проверке перед обработкой"
+
+msgid "Step 3 of 3"
+msgstr "Шаг 3 из 3"
 
 msgid "Add the voiceover"
 msgstr "Добавьте озвучку"
 
-msgid "Record with ChatGPT and Tab Sound Recorder"
-msgstr "Запись с помощью ChatGPT и Tab Sound Recorder"
-
-msgid "Open ChatGPT in the browser and send it the text that should be spoken."
-msgstr ""
-"Откройте ChatGPT в браузере и отправьте ему текст, который нужно озвучить."
-
 msgid ""
-"Ask ChatGPT to return the text as a message, without timecodes or any extra "
-"commentary."
+"Upload the complete recording that will be split and fitted to the prepared "
+"phrase timecodes."
 msgstr ""
-"Попросите ChatGPT вернуть этот текст сообщением, без таймкодов и "
-"дополнительных комментариев."
+"Загрузите полную запись озвучки: студия разделит её и подгонит под готовые "
+"таймкоды фраз."
 
-msgid "Open the response containing only that text."
-msgstr "Откройте ответ, содержащий только этот текст."
+msgid "Saved"
+msgstr "Сохранено"
 
-msgid ""
-"Before pressing ChatGPT’s “Read aloud” button, open Tab Sound Recorder and "
-"press “Start recording”."
-msgstr ""
-"Перед нажатием кнопки «Прочитать вслух» в ChatGPT откройте Tab Sound "
-"Recorder и нажмите «Начать запись»."
+msgid "Choose an audio file"
+msgstr "Выберите аудиофайл"
 
-msgid ""
-"Press “Read aloud” in ChatGPT and wait until the complete text has been read."
-msgstr ""
-"Нажмите «Прочитать вслух» в ChatGPT и дождитесь окончания чтения всего "
-"текста."
+msgid "Choose another file only if you want to replace the voiceover"
+msgstr "Выберите другой файл, только если хотите заменить озвучку"
 
-msgid "Return to Tab Sound Recorder and press “Stop and save”."
-msgstr "Вернитесь в Tab Sound Recorder и нажмите «Остановить и сохранить»."
+msgid "MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4 or MKV"
+msgstr "MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4 или MKV"
 
-msgid ""
-"You can also upload a recording made with any other tool. The studio does "
-"not require the browser extension."
-msgstr ""
-"Также можно загрузить запись, сделанную любым другим способом. Расширение "
-"браузера не является обязательным."
+msgid "Save changes and go to review"
+msgstr "Сохранить изменения и перейти к проверке"
 
-msgid "Download Tab Sound Recorder from GitHub"
-msgstr "Скачать Tab Sound Recorder с GitHub"
+msgid "Continue to review before processing"
+msgstr "Перейти к проверке перед обработкой"
 
-msgid "Upload a recording"
-msgstr "Загрузить запись"
+msgid "Timecodes prepared"
+msgstr "Таймкоды подготовлены"
 
-msgid ""
-"Enter the phrases with their target video start times or upload a TXT file. "
-"The text must be in the same language as the recording."
-msgstr ""
-"Введите фразы и время их начала в видео или загрузите TXT-файл. Текст должен "
-"быть на том же языке, что и запись."
-
-msgid "or"
-msgstr "или"
-
-msgid "Next"
-msgstr "Далее"
-
-msgid "Add video — Voiceover Studio"
+#, fuzzy
+#| msgid "Add video — Voiceover Studio"
+msgid "Add source video — Voiceover Studio"
 msgstr "Добавление видео — Студия озвучки"
 
-msgid "Step 2 of 2"
-msgstr "Шаг 2 из 2"
+msgid "Exit workflow"
+msgstr "Выйти из сценария"
+
+msgid "Continue to saved timecodes"
+msgstr "Перейти к сохранённым таймкодам"
+
+msgid "Step 1 of 3"
+msgstr "Шаг 1 из 3"
 
 msgid "Add the source video"
 msgstr "Добавьте исходное видео"
 
 msgid ""
-"The video is required even if you want only an audio file. Voiceover Studio "
-"uses its exact duration to create an audio track that lines up with the "
-"video on YouTube."
+"The video is required because its duration and phrase positions define the "
+"final voiceover."
 msgstr ""
-"Видео необходимо даже в том случае, если вам нужна только аудиодорожка. "
-"Студия озвучки использует его точную длительность, чтобы синхронизировать "
-"аудио с видео на YouTube."
+"Видео обязательно: его длительность и положение фраз задают итоговую озвучку."
 
-msgid "Continue"
-msgstr "Продолжить"
+msgid "Choose a video file"
+msgstr "Выберите видеофайл"
+
+msgid "Choose another file only if you want to replace the source video"
+msgstr "Выберите другой файл, только если хотите заменить исходное видео"
+
+msgid "MP4, WebM, MKV, MOV, AVI or M4V"
+msgstr "MP4, WebM, MKV, MOV, AVI или M4V"
+
+msgid "What should be exported?"
+msgstr "Что нужно экспортировать?"
+
+msgid "Save changes and continue"
+msgstr "Сохранить изменения и продолжить"
+
+msgid "Continue to timecodes"
+msgstr "Продолжить к таймкодам"
+
+msgid "Workflow"
+msgstr "Порядок работы"
+
+msgid ""
+"On the next step you can create phrase timecodes in the studio or use a "
+"prepared TXT, SRT, VTT or CSV file."
+msgstr ""
+"На следующем шаге можно создать таймкоды фраз в студии или использовать "
+"готовый файл TXT, SRT, VTT или CSV."
+
+msgid "Add video — Voiceover Studio"
+msgstr "Добавление видео — Студия озвучки"
+
+msgid "Go to review"
+msgstr "К проверке"
+
+msgid "Voiceover and script"
+msgstr "Озвучка и сценарий"
+
+msgid "Video and export"
+msgstr "Видео и экспорт"
+
+msgid "Step 2 of 2"
+msgstr "Шаг 2 из 2"
+
+msgid "The video sets the exact duration and timing of the final result."
+msgstr "Видео задаёт точную длительность и тайминг итогового результата."
+
+msgid "Why the video is needed"
+msgstr "Зачем нужно видео"
+
+msgid ""
+"Even for audio-only export, the studio uses the exact video duration so the "
+"track lines up on YouTube."
+msgstr ""
+"Даже при экспорте только аудио студия использует точную длительность видео, "
+"чтобы дорожка совпала с ним на YouTube."
+
+msgid "Voiceover added"
+msgstr "Озвучка добавлена"
 
 msgid "Sign in — Voiceover Studio"
 msgstr "Вход — Студия озвучки"
 
 msgid "Account"
 msgstr "Аккаунт"
+
+msgid "Continue your projects"
+msgstr "Продолжите свои проекты"
+
+msgid "Sign in to open saved voiceovers and processing results."
+msgstr "Войдите, чтобы открыть сохранённые озвучки и результаты обработки."
 
 msgid "No account yet?"
 msgstr "Ещё нет аккаунта?"
@@ -576,11 +2623,26 @@ msgstr "Создать аккаунт"
 msgid "Change password — Voiceover Studio"
 msgstr "Смена пароля — Студия озвучки"
 
+msgid "Change password"
+msgstr "Сменить пароль"
+
 msgid "Save new password"
 msgstr "Сохранить новый пароль"
 
 msgid "Create account — Voiceover Studio"
 msgstr "Создание аккаунта — Студия озвучки"
+
+msgid "Start creating"
+msgstr "Начните создавать"
+
+msgid "Your voiceover workspace"
+msgstr "Ваше пространство для озвучки"
+
+msgid "Keep projects, processing states and finished files together."
+msgstr "Храните проекты, состояния обработки и готовые файлы в одном месте."
+
+msgid "New account"
+msgstr "Новый аккаунт"
 
 msgid "Already registered?"
 msgstr "Уже зарегистрированы?"
@@ -603,8 +2665,49 @@ msgstr "Нарезаем и подгоняем фрагменты"
 msgid "Rendering the result with FFmpeg"
 msgstr "Собираем результат с помощью FFmpeg"
 
-msgid "Files uploaded. You can start processing."
-msgstr "Файлы загружены. Можно запускать обработку."
+msgid "The transcript is empty."
+msgstr "Расшифровка пуста."
+
+msgid ""
+"Replace one phrase in a finished file and check the transition before export."
+msgstr "Замените одну фразу в готовом файле и проверьте стык перед экспортом."
+
+msgid "Turn a long recording into a neatly named set of separate phrases."
+msgstr "Превратите длинную запись в аккуратно названный набор отдельных фраз."
+
+msgid ""
+"Place ready audio into SRT or VTT intervals and spot phrases that need "
+"attention."
+msgstr ""
+"Расположите готовое аудио по интервалам SRT или VTT и найдите фразы, "
+"требующие внимания."
+
+msgid "Clean and level one recording or a whole set of phrase files."
+msgstr "Очистите и выровняйте одну запись или целый набор файлов с фразами."
+
+msgid "Compare phrase files with subtitle intervals before you start assembly."
+msgstr "Сравните файлы фраз с интервалами субтитров до начала сборки."
+
+msgid ""
+"Match a prepared script to a finished voiceover and export timed subtitles."
+msgstr ""
+"Сопоставьте подготовленный сценарий с готовой озвучкой и экспортируйте "
+"субтитры с таймкодами."
+
+msgid "Render at least one language version before batch export."
+msgstr "Перед пакетным экспортом соберите хотя бы одну языковую версию."
+
+msgid "Source video replaced. Create timecodes for the new video."
+msgstr "Исходное видео заменено. Создайте таймкоды для нового видео."
+
+msgid "Project settings saved."
+msgstr "Настройки проекта сохранены."
+
+msgid "Mark every phrase before continuing to the voiceover."
+msgstr "Перед переходом к озвучке разметьте все фразы."
+
+msgid "There are no changes to apply. The existing fragments were kept."
+msgstr "Изменений для применения нет. Существующие фрагменты сохранены."
 
 msgid "Processing started. You may leave this page and return later."
 msgstr "Обработка запущена. Можно покинуть эту страницу и вернуться позже."
@@ -615,8 +2718,18 @@ msgstr "Обработка уже выполняется."
 msgid "Process and review the fragments first."
 msgstr "Сначала обработайте и проверьте фрагменты."
 
+msgid "Apply the phrase changes before building the final result."
+msgstr "Перед сборкой итогового результата примените изменения фраз."
+
 msgid "Final rendering started. You may leave this page and return later."
-msgstr "Финальная сборка запущена. Можно покинуть эту страницу и вернуться позже."
+msgstr ""
+"Финальная сборка запущена. Можно покинуть эту страницу и вернуться позже."
+
+msgid "Processing was cancelled."
+msgstr "Обработка отменена."
+
+msgid "There is no failed job to retry."
+msgstr "Нет неудачного задания, которое можно повторить."
 
 msgid "Select an audio file to replace the fragment."
 msgstr "Выберите аудиофайл для замены фрагмента."
@@ -626,6 +2739,9 @@ msgstr "Аудио фрагмента заменено."
 
 msgid "Invalid editor data."
 msgstr "Некорректные данные редактора."
+
+msgid "Export file is not available."
+msgstr "Файл экспорта недоступен."
 
 msgid "Select the beginning and end of the phrase."
 msgstr "Выберите начало и конец фразы."
@@ -649,10 +2765,1052 @@ msgid "Preparing the result for download"
 msgstr "Подготавливаем результат к скачиванию"
 
 msgid "Email"
+msgstr "Электронная почта"
+
+msgid "Messages"
 msgstr ""
 
-msgid "Saving"
-msgstr "Сохраняем"
+msgid "Site Maps"
+msgstr ""
 
-msgid "Please wait"
-msgstr "Пожалуйста, подождите"
+msgid "Static Files"
+msgstr ""
+
+#, fuzzy
+#| msgid "Punctuation"
+msgid "Syndication"
+msgstr "Пунктуация"
+
+#. Translators: String used to replace omitted page numbers in elided page
+#. range generated by paginators, e.g. [1, 2, '…', 5, 6, 7, '…', 9, 10].
+msgid "…"
+msgstr ""
+
+msgid "That page number is not an integer"
+msgstr ""
+
+msgid "That page number is less than 1"
+msgstr ""
+
+#, fuzzy
+#| msgid "The text contains no phrases."
+msgid "That page contains no results"
+msgstr "В тексте нет фраз."
+
+msgid "Enter a valid value."
+msgstr ""
+
+msgid "Enter a valid domain name."
+msgstr ""
+
+msgid "Enter a valid URL."
+msgstr ""
+
+msgid "Enter a valid integer."
+msgstr ""
+
+msgid "Enter a valid email address."
+msgstr ""
+
+#. Translators: "letters" means latin letters: a-z and A-Z.
+msgid ""
+"Enter a valid “slug” consisting of letters, numbers, underscores or hyphens."
+msgstr ""
+
+msgid ""
+"Enter a valid “slug” consisting of Unicode letters, numbers, underscores, or "
+"hyphens."
+msgstr ""
+
+#, python-format
+msgid "Enter a valid %(protocol)s address."
+msgstr ""
+
+msgid "IPv4"
+msgstr ""
+
+msgid "IPv6"
+msgstr ""
+
+msgid "IPv4 or IPv6"
+msgstr ""
+
+msgid "Enter only digits separated by commas."
+msgstr ""
+
+#, python-format
+msgid "Ensure this value is %(limit_value)s (it is %(show_value)s)."
+msgstr ""
+
+#, python-format
+msgid "Ensure this value is less than or equal to %(limit_value)s."
+msgstr ""
+
+#, python-format
+msgid "Ensure this value is greater than or equal to %(limit_value)s."
+msgstr ""
+
+#, python-format
+msgid "Ensure this value is a multiple of step size %(limit_value)s."
+msgstr ""
+
+#, python-format
+msgid ""
+"Ensure this value is a multiple of step size %(limit_value)s, starting from "
+"%(offset)s, e.g. %(offset)s, %(valid_value1)s, %(valid_value2)s, and so on."
+msgstr ""
+
+#, python-format
+msgid ""
+"Ensure this value has at least %(limit_value)d character (it has "
+"%(show_value)d)."
+msgid_plural ""
+"Ensure this value has at least %(limit_value)d characters (it has "
+"%(show_value)d)."
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid ""
+"Ensure this value has at most %(limit_value)d character (it has "
+"%(show_value)d)."
+msgid_plural ""
+"Ensure this value has at most %(limit_value)d characters (it has "
+"%(show_value)d)."
+msgstr[0] ""
+msgstr[1] ""
+
+#, fuzzy
+#| msgid "Enter — merge"
+msgid "Enter a number."
+msgstr "Enter — объединить"
+
+#, python-format
+msgid "Ensure that there are no more than %(max)s digit in total."
+msgid_plural "Ensure that there are no more than %(max)s digits in total."
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid "Ensure that there are no more than %(max)s decimal place."
+msgid_plural "Ensure that there are no more than %(max)s decimal places."
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid ""
+"Ensure that there are no more than %(max)s digit before the decimal point."
+msgid_plural ""
+"Ensure that there are no more than %(max)s digits before the decimal point."
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid ""
+"File extension “%(extension)s” is not allowed. Allowed extensions are: "
+"%(allowed_extensions)s."
+msgstr ""
+
+msgid "Null characters are not allowed."
+msgstr ""
+
+#, fuzzy
+#| msgid "End"
+msgid "and"
+msgstr "Конец"
+
+#, python-format
+msgid "%(model_name)s with this %(field_labels)s already exists."
+msgstr ""
+
+#, python-format
+msgid "Constraint “%(name)s” is violated."
+msgstr ""
+
+#, python-format
+msgid "Value %(value)r is not a valid choice."
+msgstr ""
+
+#, fuzzy
+#| msgid "This action cannot be undone."
+msgid "This field cannot be null."
+msgstr "Это действие нельзя отменить."
+
+#, fuzzy
+#| msgid "This action cannot be undone."
+msgid "This field cannot be blank."
+msgstr "Это действие нельзя отменить."
+
+#, python-format
+msgid "%(model_name)s with this %(field_label)s already exists."
+msgstr ""
+
+#. Translators: The 'lookup_type' is one of 'date', 'year' or
+#. 'month'. Eg: "Title must be unique for pub_date year"
+#, python-format
+msgid ""
+"%(field_label)s must be unique for %(date_field_label)s %(lookup_type)s."
+msgstr ""
+
+#, python-format
+msgid "Field of type: %(field_type)s"
+msgstr ""
+
+#, python-format
+msgid "“%(value)s” value must be either True or False."
+msgstr ""
+
+#, python-format
+msgid "“%(value)s” value must be either True, False, or None."
+msgstr ""
+
+msgid "Boolean (Either True or False)"
+msgstr ""
+
+#, python-format
+msgid "String (up to %(max_length)s)"
+msgstr ""
+
+msgid "String (unlimited)"
+msgstr ""
+
+msgid "Comma-separated integers"
+msgstr ""
+
+#, python-format
+msgid ""
+"“%(value)s” value has an invalid date format. It must be in YYYY-MM-DD "
+"format."
+msgstr ""
+
+#, python-format
+msgid ""
+"“%(value)s” value has the correct format (YYYY-MM-DD) but it is an invalid "
+"date."
+msgstr ""
+
+msgid "Date (without time)"
+msgstr ""
+
+#, python-format
+msgid ""
+"“%(value)s” value has an invalid format. It must be in YYYY-MM-DD HH:MM[:ss[."
+"uuuuuu]][TZ] format."
+msgstr ""
+
+#, python-format
+msgid ""
+"“%(value)s” value has the correct format (YYYY-MM-DD HH:MM[:ss[.uuuuuu]]"
+"[TZ]) but it is an invalid date/time."
+msgstr ""
+
+#, fuzzy
+#| msgid "Subtitles with timecodes"
+msgid "Date (with time)"
+msgstr "Субтитры с таймкодами"
+
+#, python-format
+msgid "“%(value)s” value must be a decimal number."
+msgstr ""
+
+msgid "Decimal number"
+msgstr ""
+
+#, python-format
+msgid ""
+"“%(value)s” value has an invalid format. It must be in [DD] [[HH:]MM:]ss[."
+"uuuuuu] format."
+msgstr ""
+
+msgid "Email address"
+msgstr ""
+
+msgid "File path"
+msgstr ""
+
+#, python-format
+msgid "“%(value)s” value must be a float."
+msgstr ""
+
+msgid "Floating point number"
+msgstr ""
+
+#, python-format
+msgid "“%(value)s” value must be an integer."
+msgstr ""
+
+msgid "Integer"
+msgstr ""
+
+msgid "Big (8 byte) integer"
+msgstr ""
+
+msgid "Small integer"
+msgstr ""
+
+msgid "IPv4 address"
+msgstr ""
+
+msgid "IP address"
+msgstr ""
+
+#, python-format
+msgid "“%(value)s” value must be either None, True or False."
+msgstr ""
+
+msgid "Boolean (Either True, False or None)"
+msgstr ""
+
+msgid "Positive big integer"
+msgstr ""
+
+msgid "Positive integer"
+msgstr ""
+
+msgid "Positive small integer"
+msgstr ""
+
+#, python-format
+msgid "Slug (up to %(max_length)s)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Text mode"
+msgid "Text"
+msgstr "Режим текста"
+
+#, python-format
+msgid ""
+"“%(value)s” value has an invalid format. It must be in HH:MM[:ss[.uuuuuu]] "
+"format."
+msgstr ""
+
+#, python-format
+msgid ""
+"“%(value)s” value has the correct format (HH:MM[:ss[.uuuuuu]]) but it is an "
+"invalid time."
+msgstr ""
+
+#, fuzzy
+#| msgid "Timecodes"
+msgid "Time"
+msgstr "Таймкоды"
+
+msgid "URL"
+msgstr ""
+
+msgid "Raw binary data"
+msgstr ""
+
+#, python-format
+msgid "“%(value)s” is not a valid UUID."
+msgstr ""
+
+msgid "Universally unique identifier"
+msgstr ""
+
+msgid "File"
+msgstr ""
+
+msgid "Image"
+msgstr ""
+
+msgid "A JSON object"
+msgstr ""
+
+msgid "Value must be valid JSON."
+msgstr ""
+
+#, python-format
+msgid "%(model)s instance with %(field)s %(value)r is not a valid choice."
+msgstr ""
+
+msgid "Foreign Key (type determined by related field)"
+msgstr ""
+
+msgid "One-to-one relationship"
+msgstr ""
+
+#, python-format
+msgid "%(from)s-%(to)s relationship"
+msgstr ""
+
+#, python-format
+msgid "%(from)s-%(to)s relationships"
+msgstr ""
+
+msgid "Many-to-many relationship"
+msgstr ""
+
+#. Translators: If found as last label character, these punctuation
+#. characters will prevent the default label_suffix to be appended to
+#. the label
+msgid ":?.!"
+msgstr ""
+
+msgid "This field is required."
+msgstr ""
+
+msgid "Enter a whole number."
+msgstr ""
+
+msgid "Enter a valid date."
+msgstr ""
+
+msgid "Enter a valid time."
+msgstr ""
+
+msgid "Enter a valid date/time."
+msgstr ""
+
+msgid "Enter a valid duration."
+msgstr ""
+
+#, python-brace-format
+msgid "The number of days must be between {min_days} and {max_days}."
+msgstr ""
+
+msgid "No file was submitted. Check the encoding type on the form."
+msgstr ""
+
+msgid "No file was submitted."
+msgstr ""
+
+#, fuzzy
+#| msgid "The transcript is empty."
+msgid "The submitted file is empty."
+msgstr "Расшифровка пуста."
+
+#, python-format
+msgid "Ensure this filename has at most %(max)d character (it has %(length)d)."
+msgid_plural ""
+"Ensure this filename has at most %(max)d characters (it has %(length)d)."
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Please either submit a file or check the clear checkbox, not both."
+msgstr ""
+
+msgid ""
+"Upload a valid image. The file you uploaded was either not an image or a "
+"corrupted image."
+msgstr ""
+
+#, python-format
+msgid "Select a valid choice. %(value)s is not one of the available choices."
+msgstr ""
+
+#, fuzzy
+#| msgid "Enter at least one manual interval."
+msgid "Enter a list of values."
+msgstr "Введите хотя бы один интервал вручную."
+
+msgid "Enter a complete value."
+msgstr ""
+
+msgid "Enter a valid UUID."
+msgstr ""
+
+msgid "Enter a valid JSON."
+msgstr ""
+
+#. Translators: This is the default suffix added to form field labels
+msgid ":"
+msgstr ""
+
+#, python-format
+msgid "(Hidden field %(name)s) %(error)s"
+msgstr ""
+
+#, python-format
+msgid ""
+"ManagementForm data is missing or has been tampered with. Missing fields: "
+"%(field_names)s. You may need to file a bug report if the issue persists."
+msgstr ""
+
+#, python-format
+msgid "Please submit at most %(num)d form."
+msgid_plural "Please submit at most %(num)d forms."
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid "Please submit at least %(num)d form."
+msgid_plural "Please submit at least %(num)d forms."
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Order"
+msgstr ""
+
+#, python-format
+msgid "Please correct the duplicate data for %(field)s."
+msgstr ""
+
+#, python-format
+msgid "Please correct the duplicate data for %(field)s, which must be unique."
+msgstr ""
+
+#, python-format
+msgid ""
+"Please correct the duplicate data for %(field_name)s which must be unique "
+"for the %(lookup)s in %(date_field)s."
+msgstr ""
+
+msgid "Please correct the duplicate values below."
+msgstr ""
+
+msgid "The inline value did not match the parent instance."
+msgstr ""
+
+msgid "Select a valid choice. That choice is not one of the available choices."
+msgstr ""
+
+#, python-format
+msgid "“%(pk)s” is not a valid value."
+msgstr ""
+
+#, python-format
+msgid ""
+"%(datetime)s couldn’t be interpreted in time zone %(current_timezone)s; it "
+"may be ambiguous or it may not exist."
+msgstr ""
+
+msgid "Clear"
+msgstr ""
+
+#, fuzzy
+#| msgid "Current controls"
+msgid "Currently"
+msgstr "Текущее управление"
+
+#, fuzzy
+#| msgid "Changes"
+msgid "Change"
+msgstr "Изменения"
+
+msgid "Unknown"
+msgstr ""
+
+msgid "Yes"
+msgstr ""
+
+msgid "No"
+msgstr ""
+
+#, fuzzy
+#| msgid "Ready"
+msgctxt "Task"
+msgid "Ready"
+msgstr "Готов"
+
+#, fuzzy
+#| msgid "Running"
+msgctxt "Task"
+msgid "Running"
+msgstr "Выполняется"
+
+#, fuzzy
+#| msgid "Failed"
+msgctxt "Task"
+msgid "Failed"
+msgstr "Ошибка"
+
+msgctxt "Task"
+msgid "Successful"
+msgstr ""
+
+#. Translators: Please do not add spaces around commas.
+msgid "yes,no,maybe"
+msgstr ""
+
+#, python-format
+msgid "%(size)d byte"
+msgid_plural "%(size)d bytes"
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid "%s KB"
+msgstr ""
+
+#, python-format
+msgid "%s MB"
+msgstr ""
+
+#, python-format
+msgid "%s GB"
+msgstr ""
+
+#, python-format
+msgid "%s TB"
+msgstr ""
+
+#, python-format
+msgid "%s PB"
+msgstr ""
+
+msgid "p.m."
+msgstr ""
+
+msgid "a.m."
+msgstr ""
+
+msgid "PM"
+msgstr ""
+
+msgid "AM"
+msgstr ""
+
+msgid "midnight"
+msgstr ""
+
+msgid "noon"
+msgstr ""
+
+msgid "Monday"
+msgstr ""
+
+msgid "Tuesday"
+msgstr ""
+
+msgid "Wednesday"
+msgstr ""
+
+msgid "Thursday"
+msgstr ""
+
+msgid "Friday"
+msgstr ""
+
+msgid "Saturday"
+msgstr ""
+
+#, fuzzy
+#| msgid "boundary"
+msgid "Sunday"
+msgstr "граница"
+
+msgid "Mon"
+msgstr ""
+
+msgid "Tue"
+msgstr ""
+
+msgid "Wed"
+msgstr ""
+
+msgid "Thu"
+msgstr ""
+
+msgid "Fri"
+msgstr ""
+
+#, fuzzy
+#| msgid "Start"
+msgid "Sat"
+msgstr "Начало"
+
+msgid "Sun"
+msgstr ""
+
+msgid "January"
+msgstr ""
+
+msgid "February"
+msgstr ""
+
+msgid "March"
+msgstr ""
+
+msgid "April"
+msgstr ""
+
+msgid "May"
+msgstr ""
+
+msgid "June"
+msgstr ""
+
+msgid "July"
+msgstr ""
+
+msgid "August"
+msgstr ""
+
+msgid "September"
+msgstr ""
+
+msgid "October"
+msgstr ""
+
+msgid "November"
+msgstr ""
+
+msgid "December"
+msgstr ""
+
+msgid "jan"
+msgstr ""
+
+msgid "feb"
+msgstr ""
+
+msgid "mar"
+msgstr ""
+
+#, fuzzy
+#| msgid "approx."
+msgid "apr"
+msgstr "примерно"
+
+msgid "may"
+msgstr ""
+
+msgid "jun"
+msgstr ""
+
+msgid "jul"
+msgstr ""
+
+msgid "aug"
+msgstr ""
+
+msgid "sep"
+msgstr ""
+
+msgid "oct"
+msgstr ""
+
+msgid "nov"
+msgstr ""
+
+msgid "dec"
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "Jan."
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "Feb."
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "March"
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "April"
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "May"
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "June"
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "July"
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "Aug."
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "Sept."
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "Oct."
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "Nov."
+msgstr ""
+
+msgctxt "abbrev. month"
+msgid "Dec."
+msgstr ""
+
+msgctxt "alt. month"
+msgid "January"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "February"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "March"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "April"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "May"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "June"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "July"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "August"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "September"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "October"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "November"
+msgstr ""
+
+msgctxt "alt. month"
+msgid "December"
+msgstr ""
+
+msgid "This is not a valid IPv6 address."
+msgstr ""
+
+#, python-format
+msgctxt "String to return when truncating text"
+msgid "%(truncated_text)s…"
+msgstr ""
+
+#. Translators: This string is used as a separator between list elements
+msgid ", "
+msgstr ""
+
+#, python-format
+msgid "%(num)d year"
+msgid_plural "%(num)d years"
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid "%(num)d month"
+msgid_plural "%(num)d months"
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid "%(num)d week"
+msgid_plural "%(num)d weeks"
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid "%(num)d day"
+msgid_plural "%(num)d days"
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid "%(num)d hour"
+msgid_plural "%(num)d hours"
+msgstr[0] ""
+msgstr[1] ""
+
+#, python-format
+msgid "%(num)d minute"
+msgid_plural "%(num)d minutes"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Forbidden"
+msgstr ""
+
+msgid "CSRF verification failed. Request aborted."
+msgstr ""
+
+msgid ""
+"You are seeing this message because this HTTPS site requires a “Referer "
+"header” to be sent by your web browser, but none was sent. This header is "
+"required for security reasons, to ensure that your browser is not being "
+"hijacked by third parties."
+msgstr ""
+
+msgid ""
+"If you have configured your browser to disable “Referer” headers, please re-"
+"enable them, at least for this site, or for HTTPS connections, or for “same-"
+"origin” requests."
+msgstr ""
+
+msgid ""
+"If you are using the <meta name=\"referrer\" content=\"no-referrer\"> tag or "
+"including the “Referrer-Policy: no-referrer” header, please remove them. The "
+"CSRF protection requires the “Referer” header to do strict referer checking. "
+"If you’re concerned about privacy, use alternatives like <a "
+"rel=\"noreferrer\" …> for links to third-party sites."
+msgstr ""
+
+msgid ""
+"You are seeing this message because this site requires a CSRF cookie when "
+"submitting forms. This cookie is required for security reasons, to ensure "
+"that your browser is not being hijacked by third parties."
+msgstr ""
+
+msgid ""
+"If you have configured your browser to disable cookies, please re-enable "
+"them, at least for this site, or for “same-origin” requests."
+msgstr ""
+
+msgid "More information is available with DEBUG=True."
+msgstr ""
+
+msgid "No year specified"
+msgstr ""
+
+msgid "Date out of range"
+msgstr ""
+
+msgid "No month specified"
+msgstr ""
+
+msgid "No day specified"
+msgstr ""
+
+msgid "No week specified"
+msgstr ""
+
+#, python-format
+msgid "No %(verbose_name_plural)s available"
+msgstr ""
+
+#, python-format
+msgid ""
+"Future %(verbose_name_plural)s not available because %(class_name)s."
+"allow_future is False."
+msgstr ""
+
+#, python-format
+msgid "Invalid date string “%(datestr)s” given format “%(format)s”"
+msgstr ""
+
+#, python-format
+msgid "No %(verbose_name)s found matching the query"
+msgstr ""
+
+msgid "Page is not “last”, nor can it be converted to an int."
+msgstr ""
+
+#, python-format
+msgid "Invalid page (%(page_number)s): %(message)s"
+msgstr ""
+
+#, python-format
+msgid "Empty list and “%(class_name)s.allow_empty” is False."
+msgstr ""
+
+msgid "Directory indexes are not allowed here."
+msgstr ""
+
+#, python-format
+msgid "“%(path)s” does not exist"
+msgstr ""
+
+#, python-format
+msgid "Index of %(directory)s"
+msgstr ""
+
+msgid "The install worked successfully! Congratulations!"
+msgstr ""
+
+#, python-format
+msgid ""
+"View <a href=\"https://docs.djangoproject.com/en/%(version)s/releases/\" "
+"target=\"_blank\" rel=\"noopener\">release notes</a> for Django %(version)s"
+msgstr ""
+
+#, python-format
+msgid ""
+"You are seeing this page because <a href=\"https://docs.djangoproject.com/en/"
+"%(version)s/ref/settings/#debug\" target=\"_blank\" "
+"rel=\"noopener\">DEBUG=True</a> is in your settings file and you have not "
+"configured any URLs."
+msgstr ""
+
+msgid "Django Documentation"
+msgstr ""
+
+msgid "Topics, references, &amp; how-to’s"
+msgstr ""
+
+msgid "Tutorial: A Polling App"
+msgstr ""
+
+msgid "Get started with Django"
+msgstr ""
+
+msgid "Django Community"
+msgstr ""
+
+msgid "Connect, get help, or contribute"
+msgstr ""
+
+#~ msgid "Process again"
+#~ msgstr "Обработать заново"
+
+#~ msgid "The filename must begin with a phrase number."
+#~ msgstr "Имя файла должно начинаться с номера фразы."
+
+#~ msgid "There is no phrase with this number."
+#~ msgstr "Фразы с таким номером нет."
+
+#~ msgid "Several files refer to the same phrase."
+#~ msgstr "Несколько файлов относятся к одной и той же фразе."
+
+#~ msgid "Replace several phrases"
+#~ msgstr "Заменить несколько фраз"
+
+#~ msgid ""
+#~ "The number at the beginning of each filename selects the phrase: 003.wav "
+#~ "replaces phrase 3."
+#~ msgstr ""
+#~ "Номер в начале имени файла определяет фразу: файл 003.wav заменит фразу 3."
+
+#~ msgid "Choose audio files"
+#~ msgstr "Выбрать аудиофайлы"
+
+#~ msgid "Replace selected phrases"
+#~ msgstr "Заменить выбранные фразы"
+
+#~ msgid "Files and phrases"
+#~ msgstr "Файлы и фразы"
+
+#, python-format
+#~ msgid "%(name)s: unsupported audio format."
+#~ msgstr "%(name)s: неподдерживаемый формат аудио."
+
+#, python-format
+#~ msgid "%(name)s: start the filename with the phrase number."
+#~ msgstr "%(name)s: начните имя файла с номера фразы."
+
+#, python-format
+#~ msgid "%(name)s: phrase %(position)s does not exist."
+#~ msgstr "%(name)s: фразы %(position)s не существует."
+
+#, python-format
+#~ msgid "Replaced fragments: %(count)s"
+#~ msgstr "Заменено фрагментов: %(count)s"
+
+#~ msgid "Continue to voiceover"
+#~ msgstr "Продолжить к озвучке"
+
+#~ msgid "Start each filename with its phrase number, for example 003.wav."
+#~ msgstr "Начинайте имя каждого файла с номера фразы, например 003.wav."

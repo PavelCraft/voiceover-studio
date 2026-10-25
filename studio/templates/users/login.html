@@ -1,16 +1,3 @@
-{% extends "studio/base.html" %}
-{% load i18n %}
-{% block title %}{% trans "Sign in — Voiceover Studio" %}{% endblock %}
-{% block content %}
-<section class="auth-card card">
-  <p class="step">{% trans "Account" %}</p>
-  <h1>{% trans "Sign in" %}</h1>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-    <button class="button primary" type="submit">{% trans "Sign in" %}</button>
-  </form>
-  <p class="muted">{% trans "No account yet?" %} <a href="{% url 'users:register' %}">{% trans "Create one" %}</a></p>
-</section>
-{% endblock %}
+{% extends "studio/base.html" %}{% load i18n %}
+{% block title %}{% trans "Sign in — Voiceover Studio" %}{% endblock %}{% block topbar_title %}{% trans "Account" %}{% endblock %}
+{% block content %}<section class="auth-layout"><div class="auth-intro"><p class="eyebrow"><span></span>{% trans "Your workspace" %}</p><h1>{% trans "Continue your projects" %}</h1><p class="lead">{% trans "Sign in to open saved voiceovers and processing results." %}</p><div class="auth-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><section class="auth-card card"><p class="step">{% trans "Account" %}</p><h2>{% trans "Sign in" %}</h2><form method="post">{% csrf_token %}{{ form.as_p }}{% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}<button class="button primary" type="submit">{% trans "Sign in" %}</button></form><p class="muted">{% trans "No account yet?" %} <a href="{% url 'users:register' %}">{% trans "Create one" %}</a></p></section></section>{% endblock %}

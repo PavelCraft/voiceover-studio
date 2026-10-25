@@ -25,7 +25,10 @@
 
     let endedNaturally = false;
     function renderTime() {
-      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      const knownDuration = Number(player.dataset.duration);
+      const duration = Number.isFinite(audio.duration) && audio.duration > 0
+        ? audio.duration
+        : (Number.isFinite(knownDuration) && knownDuration > 0 ? knownDuration : 0);
       time.textContent = `${formatTime(audio.currentTime)} / ${formatTime(duration)}`;
       seek.max = String(duration);
       if (document.activeElement !== seek) {
@@ -49,6 +52,24 @@
       player.classList.add("segment-player-error");
       toggle.disabled = true;
     });
+    player.addEventListener("segment-audio-updated", event => {
+      if (activeAudio === audio) activeAudio = null;
+      audio.pause();
+      endedNaturally = false;
+      selectedTime = 0;
+      delete player.dataset.duration;
+      player.classList.remove("segment-player-error");
+      toggle.disabled = false;
+      setPaused(player);
+      seek.value = "0";
+      seek.max = "0";
+      time.textContent = "0:00 / --:--";
+      audio.src = event.detail.url;
+      const download = player.querySelector(".segment-player-download");
+      if (download) download.href = event.detail.url;
+      audio.load();
+    });
+    renderTime();
     function applySeekPosition() {
       const requested = Number(seek.value);
       if (!Number.isFinite(requested)) return;

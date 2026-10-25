@@ -1,0 +1,18 @@
+{% extends "studio/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Voiceover from takes — Voiceover Studio" %}{% endblock %}
+{% block topbar_title %}{% trans "Takes project" %}{% endblock %}
+{% block navigation %}<nav class="workflow-nav"><a href="{% url 'project-scenario-select' %}">← {% trans "Choose another workflow" %}</a></nav>{% endblock %}
+{% block content %}
+<header class="workflow-header"><div><p class="eyebrow"><span></span>{% trans "Production workflow" %}</p><h1>{% trans "Assemble voiceover from takes" %}</h1></div><ol class="workflow-steps four-steps"><li class="active"><i>1</i><span>{% trans "Materials" %}</span></li><li><i>2</i><span>{% trans "Find takes" %}</span></li><li><i>3</i><span>{% trans "Selection" %}</span></li><li><i>4</i><span>{% trans "Assembly" %}</span></li></ol></header>
+<div class="work-layout"><section class="card work-card"><div class="card-heading"><span class="heading-icon amber-icon"><svg viewBox="0 0 24 24"><path d="M6 7h3v10H6zM11 5h3v14h-3zM16 8h3v8h-3z"/></svg></span><div><p class="step">{% trans "Step 1 of 4" %}</p><h2>{% trans "Add the session materials" %}</h2><p>{% trans "The studio will find repeated phrases in the recordings and connect them to target video intervals." %}</p></div></div>
+  <form class="studio-form prototype-form" method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.non_field_errors }}
+    <div class="field-block"><label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>{{ form.title }}</div>
+    <div class="prototype-upload-grid"><div class="field-block"><label for="{{ form.video_file.id_for_label }}">{{ form.video_file.label }}</label>{{ form.video_file }}{{ form.video_file.errors }}</div><div class="field-block"><label for="{{ form.script_file.id_for_label }}">{{ form.script_file.label }}</label>{{ form.script_file }}{{ form.script_file.errors }}</div></div>
+    <div class="field-block"><label for="{{ form.script_text.id_for_label }}">{{ form.script_text.label }}</label>{{ form.script_text }}{{ form.script_text.errors }}</div>
+    <div class="field-block"><label for="{{ form.recordings.id_for_label }}">{{ form.recordings.label }}</label>{{ form.recordings }}{{ form.recordings.errors }}<small>{% trans "Upload one long session, one file with several full readings, or several complete readings." %}</small></div>
+    <fieldset class="choice-field"><legend>{{ form.mode.label }}</legend><div>{{ form.mode }}</div>{{ form.mode.errors }}</fieldset>
+    <div class="form-footer"><span><i></i>{% trans "You will verify every uncertain fragment before assembly" %}</span><button class="button primary" type="submit">{% trans "Find takes" %} <b>→</b></button></div>
+  </form>
+</section><aside class="context-panel"><section><p class="section-kicker">{% trans "Selection" %}</p><ul class="check-list"><li>{% trans "Listen to every take" %}</li><li>{% trans "Compare duration and required speed" %}</li><li>{% trans "Adjust boundaries and identify phrases that need rerecording" %}</li></ul></section></aside></div>
+{% endblock %}

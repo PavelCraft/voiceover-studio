@@ -372,13 +372,30 @@
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || editor.dataset.saveError);
-    if (!result.processing) {
+    if (result.processing) {
+      showProcessingMessage();
+      await waitForProcessing(result.status_url);
+    }
+    if (payload.skipped) {
       redirectToSegment(result.redirect_url);
       return;
     }
-    showProcessingMessage();
-    await waitForProcessing(result.status_url);
-    redirectToSegment(result.redirect_url);
+    const position = data.position;
+    closeEditor();
+    refreshSegmentPlayer(position);
+  }
+
+  function refreshSegmentPlayer(position) {
+    const segment = document.getElementById(`segment-${position}`);
+    const player = segment?.querySelector(".segment-player");
+    const playerAudio = player?.querySelector("audio");
+    if (!player || !playerAudio) return;
+    const url = new URL(playerAudio.currentSrc || playerAudio.src, window.location.href);
+    url.searchParams.set("v", `${Date.now()}`);
+    player.dispatchEvent(new CustomEvent("segment-audio-updated", {
+      detail: {url: url.href},
+    }));
+    segment.scrollIntoView({block: "nearest"});
   }
 
   function redirectToSegment(url) {

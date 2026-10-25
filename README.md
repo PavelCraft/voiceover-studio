@@ -72,7 +72,73 @@ http://127.0.0.1:8000/
 
 ### Использование
 
-Загрузите озвучку, вставьте текст с таймкодами или приложите TXT-файл, затем загрузите исходное видео и выберите режим экспорта. Сервис распознает слова через Groq, сопоставит их с фразами, найдёт реальные паузы, нарежет аудио, ускорит слишком длинные фрагменты и соберёт готовое видео или аудиодорожку. Обработка выполняется в фоне, а текущие этапы отображаются на странице проекта, поэтому страницу можно покинуть и открыть позднее. После обработки каждый фрагмент можно прослушать в браузере. Для работы требуются FFmpeg и действующий `GROQ_API_KEY` в `.env`.
+Загрузите озвучку и сценарий в TXT, SRT, VTT или CSV, затем исходное видео и настройки экспорта. Долговечная очередь продолжает обработку независимо от открытой страницы. После проверки доступны M4A/WAV, отдельные фрагменты, SRT, CSV и FCPXML для Premiere/DaVinci. Инструмент «Аудио в текст» распознаёт речь, сохраняет пунктуацию и абзацы и экспортирует редактируемый результат в TXT или DOCX. Для работы требуются FFmpeg и действующий `GROQ_API_KEY` в `.env`.
+
+### Очередь и хранение
+
+Локально `VOICEOVER_AUTOSTART_WORKER=1` запускает одноразовый обработчик. На сервере установите `VOICEOVER_AUTOSTART_WORKER=0` и держите отдельный процесс:
+
+```bash
+python manage.py run_voiceover_worker
+```
+
+Зависшие задания возвращаются в очередь, неудачные можно повторить, активные — отменить. Ограничения длительности и месячные квоты сейчас отключены. Если лимиты появятся позже, они должны проверяться до принятия видео или аудио; уже запущенное задание должно всегда получить возможность завершиться.
+
+Политику хранения пользователь выбирает в проекте. Worker проверяет сроки при запуске и затем раз в сутки; ручная или cron-проверка доступна командой:
+
+```bash
+python manage.py cleanup_expired_projects
+```
+
+### Production-деплой
+
+Рекомендуемый адрес приложения — `https://studio.formacode.dev`. Next.js-сайт
+`formacode.dev` и Django-студия запускаются независимо, а Nginx направляет
+поддомен студии в Gunicorn на `127.0.0.1:8001`.
+
+Первичная установка выполняется один раз:
+
+```bash
+sudo git clone <repository-url> /var/www/voiceover-studio
+sudo chown -R deploy:deploy /var/www/voiceover-studio
+cd /var/www/voiceover-studio
+sudo bash deploy/bootstrap-server.sh
+sudo nano /etc/voiceover-studio.env
+```
+
+После заполнения `.env`:
+
+```bash
+sudo -u deploy bash -lc 'set -a; source /etc/voiceover-studio.env; cd /var/www/voiceover-studio; .venv/bin/python manage.py migrate --noinput; .venv/bin/python manage.py compilemessages -l ru; .venv/bin/python manage.py collectstatic --noinput'
+sudo systemctl enable --now voiceover-studio-web voiceover-studio-worker
+sudo systemctl reload nginx
+```
+
+Шаблоны находятся в `deploy/`: два systemd unit, Nginx-конфигурация и
+production-переменные. Bootstrap создаёт отдельную loopback-файловую систему
+`media` размером 7 ГБ. Программный лимит составляет 6 ГБ, а новая операция
+принимается только если после зарезервированного объёма на корневом разделе
+останется не менее 8 ГБ.
+
+После первой установки обычное обновление запускается локально:
+
+```bash
+make deploy
+```
+
+Команда проверяет чистоту серверного репозитория, применяет только fast-forward,
+делает резервную копию SQLite, устанавливает зависимости, выполняет проверки,
+миграции, компиляцию переводов, `collectstatic` и перезапускает web и worker.
+Перед `make deploy` изменения должны быть отправлены в `origin/main`.
+
+### Архитектура
+
+- `voiceover_core` — независимые парсеры, сопоставление, диагностика, FFmpeg-фильтры и экспорт;
+- `voiceover_jobs` — контракты долговечных заданий;
+- `voiceover_projects` — структуры проекта, настройки экспорта и интерфейс биллинга;
+- `studio` — Django-формы, ORM, HTTP и адаптеры Groq/FFmpeg.
+
+`voiceover_core` не импортирует Django, модели или `settings.MEDIA_ROOT`, поэтому его можно использовать в будущем Electron-приложении без веб-сервера.
 
 ---
 
@@ -148,4 +214,4 @@ http://127.0.0.1:8000/
 
 ### Usage
 
-Upload the voiceover, paste the timecoded text or attach a TXT file, then upload the source video and choose the export mode. The service recognizes words with Groq, aligns them with the phrases, detects real pauses, cuts the audio, speeds up fragments that do not fit, and renders a finished video or audio track. Processing runs in the background and the project page shows each current stage, so you can leave it and return later. Every fragment can be reviewed in the browser after processing. FFmpeg and a valid `GROQ_API_KEY` in `.env` are required.
+Upload the voiceover and a TXT, SRT, VTT or CSV script, then add the source video and export settings. The durable queue runs independently from the page. Exports include M4A/WAV, separate clips, SRT, CSV and FCPXML for Premiere/DaVinci. The Audio to text tool recognizes speech, formats punctuation and paragraphs, and exports editable TXT or DOCX. See the Russian section for worker, retention and architecture commands. FFmpeg and a valid `GROQ_API_KEY` are required.

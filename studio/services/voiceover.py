@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import wave
@@ -9,10 +10,16 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 from django.conf import settings
+from django.utils import timezone
 from groq import Groq
 
-from studio.models import Segment
+from studio.models import ProcessingJob, Segment
 from studio.services.alignment_numbers import expand_numeric_replacements
+from voiceover_core.exports import create_sidecar_exports
+from voiceover_core.media import atempo_filters as core_atempo_filters
+from voiceover_core.media import fitting_filters as core_fitting_filters
+from voiceover_core import alignment as core_alignment
+from voiceover_core.subtitles import SubtitleParseError, parse_script
 
 NOISE_DB = -38
 MIN_SILENCE = 0.08
@@ -47,6 +54,17 @@ class ProcessingError(RuntimeError):
 
 
 def update_progress(project, step):
+    job = project.jobs.filter(status="running").order_by("-started_at").first()
+    if job:
+        if job.cancel_requested:
+            raise InterruptedError("Processing was cancelled")
+        steps = ["preparing", "transcribing", "aligning", "detecting", "cutting", "rendering", "complete"]
+        progress = round(100 * steps.index(step) / (len(steps) - 1)) if step in steps else job.progress
+        ProcessingJob.objects.filter(pk=job.pk).update(
+            current_step=step,
+            progress=progress,
+            heartbeat_at=timezone.now(),
+        )
     project.processing_step = step
     project.__class__.objects.filter(pk=project.pk).update(processing_step=step)
 
@@ -63,6 +81,14 @@ def probe_duration(path):
     result = run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
                   "-of", "default=noprint_wrappers=1:nokey=1", str(path)])
     return float(result.stdout.strip())
+
+
+def probe_has_audio(path):
+    result = run([
+        "ffprobe", "-v", "error", "-select_streams", "a:0",
+        "-show_entries", "stream=index", "-of", "csv=p=0", str(path),
+    ])
+    return bool(result.stdout.strip())
 
 
 def _write_waveform_peaks(wav_path, peaks_path):
@@ -216,37 +242,14 @@ def is_cjk_alignment(target):
     )
     return cjk_tokens >= 2 and cjk_tokens >= len(target) * 0.25
 
-def parse_timecodes(text, video_duration):
-    entries = []
-    current = None
-    pattern = re.compile(r"^(\d+):(\d{2}(?:[.,]\d+)?)(?::(\d{2}(?:[.,]\d+)?))?\s*(?:[-–—]\s*)?(.*)$")
-    for line_number, raw in enumerate(text.lstrip("\ufeff").splitlines(), 1):
-        line = raw.strip()
-        if not line:
-            continue
-        match = pattern.match(line)
-        if match:
-            if current:
-                entries.append(current)
-            first, second, third, text = match.groups()
-            second, third = second.replace(",", "."), third.replace(",", ".") if third else None
-            seconds = int(first) * 60 + float(second) if third is None else int(first) * 3600 + int(float(second)) * 60 + float(third)
-            current = {"video_start": float(seconds), "text": text.strip(), "line": line_number}
-        elif current:
-            current["text"] = f"{current['text']} {line}".strip()
-        else:
-            raise ProcessingError(f"Text before the first timecode on line {line_number}")
-    if current:
-        entries.append(current)
-    if not entries:
-        raise ProcessingError("The timecode file contains no phrases")
-    for index, entry in enumerate(entries):
-        if not entry["text"]:
-            raise ProcessingError(f"No phrase after the timecode on line {entry['line']}")
-        if index and entry["video_start"] <= entries[index - 1]["video_start"]:
-            raise ProcessingError("Video timecodes must be strictly increasing")
-        entry.update(id=index + 1, tokens=tokenize(entry["text"]))
-        entry["video_end"] = entries[index + 1]["video_start"] if index + 1 < len(entries) else video_duration
+def parse_timecodes(text, video_duration, filename=""):
+    """Compatibility adapter around the framework-independent script parser."""
+    try:
+        entries = parse_script(text, filename=filename, video_duration=video_duration)
+    except SubtitleParseError as error:
+        raise ProcessingError(str(error)) from error
+    for entry in entries:
+        entry["tokens"] = tokenize(entry["text"])
     return entries
 
 def validate_word_timestamps(words):
@@ -265,13 +268,22 @@ def validate_word_timestamps(words):
 
 
 
-def transcribe(audio_path, output_path):
+def transcribe(audio_path, output_path, language=None, prompt=None):
     client = Groq(api_key=load_groq_key())
+    parameters = {
+        "file": None,
+        "model": "whisper-large-v3",
+        "response_format": "verbose_json",
+        "timestamp_granularities": ["word", "segment"],
+        "temperature": 0,
+    }
+    if language:
+        parameters["language"] = language
+    if prompt:
+        parameters["prompt"] = str(prompt)[:1000]
     with audio_path.open("rb") as audio:
-        result = client.audio.transcriptions.create(
-            file=audio, model="whisper-large-v3", response_format="verbose_json",
-            timestamp_granularities=["word", "segment"], temperature=0,
-        )
+        parameters["file"] = audio
+        result = client.audio.transcriptions.create(**parameters)
     payload = result.model_dump()
     output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     words = payload.get("words") or []
@@ -528,14 +540,26 @@ def snap_boundaries(entries, silences):
     return entries
 
 
+# Public compatibility names now point to the framework-independent core.
+normalize_word = core_alignment.normalize_word
+tokenize = core_alignment.tokenize
+find_best_match = core_alignment.find_best_match
+align_entries = core_alignment.align_entries
+rank_silences = core_alignment.rank_silences
+snap_boundaries = core_alignment.snap_boundaries
+
+
 def atempo_filters(speed):
-    filters = []
-    while speed > 2.0:
-        filters.append("atempo=2.0")
-        speed /= 2.0
-    if speed > 1.00001:
-        filters.append(f"atempo={speed:.9f}")
-    return filters
+    return core_atempo_filters(speed)
+
+
+def fitting_filters(project, speed, expected, available):
+    return core_fitting_filters(
+        speed,
+        expected,
+        available,
+        normalize_loudness=project.normalize_loudness,
+    )
 
 
 
@@ -564,11 +588,7 @@ def cut_replacement_segment(project, replacement):
     available = max(0.05, segment.video_end - segment.video_start - MIN_VIDEO_GAP)
     speed = max(1.0, source_duration / available)
     expected = min(source_duration / speed, available)
-    filters = atempo_filters(speed) + [
-        "afade=t=in:st=0:d=0.008",
-        f"afade=t=out:st={max(0, expected-0.008):.6f}:d=0.008",
-        f"atrim=duration={available:.6f}",
-    ]
+    filters = fitting_filters(project, speed, expected, available)
     run([
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
         "-i", str(raw_path),
@@ -590,7 +610,8 @@ def render_output(project, entries, fitted_files, video_duration, work_dir):
     output_dir = work_dir / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
     is_video = project.output_mode == project.OUTPUT_VIDEO
-    output_path = output_dir / ("voiceover-video.mp4" if is_video else "voiceover-track.m4a")
+    audio_format = project.export_format if project.export_format in {"m4a", "wav"} else "m4a"
+    output_path = output_dir / ("voiceover-video.mp4" if is_video else f"voiceover-track.{audio_format}")
     command = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
     if is_video:
         command.extend(["-i", project.video_file.path])
@@ -611,13 +632,106 @@ def render_output(project, entries, fitted_files, video_duration, work_dir):
         command.extend(["-map", "0:v:0", "-map", "[aout]", "-c:v", "copy"])
     else:
         command.extend(["-map", "[aout]"])
-    command.extend(["-c:a", "aac", "-b:a", "192k", "-t", f"{video_duration:.6f}",
-                    "-movflags", "+faststart", str(output_path)])
+    if not is_video and audio_format == "wav":
+        command.extend(["-c:a", "pcm_s24le", "-ar", "48000", "-t", f"{video_duration:.6f}", str(output_path)])
+    else:
+        command.extend(["-c:a", "aac", "-b:a", "192k", "-t", f"{video_duration:.6f}",
+                        "-movflags", "+faststart", str(output_path)])
     run(command)
     return output_path
 
 
-def process_project(project, reuse_transcription=False, realign_from_position=None):
+def apply_timing_changes(project, positions):
+    project.processing_status = "processing"
+    project.processing_step = "cutting"
+    project.processing_error = ""
+    project.save(update_fields=["processing_status", "processing_step", "processing_error"])
+    work_dir = Path(settings.MEDIA_ROOT) / "jobs" / str(project.id)
+    alignment_path = work_dir / "alignment.json"
+    fitted_dir = work_dir / "fitted"
+    fitted_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        if not alignment_path.exists():
+            raise ProcessingError("Saved alignment is missing; start full processing manually")
+        video_duration = probe_duration(project.video_file.path)
+        timecodes_text = project.timecodes_text.strip()
+        if not timecodes_text:
+            timecodes_text = Path(project.timecodes_file.path).read_text(encoding="utf-8-sig")
+        entries = parse_timecodes(
+            timecodes_text, video_duration,
+            project.timecodes_name if project.timecodes_file else "",
+        )
+        segments = {segment.position: segment for segment in project.segments.all()}
+        alignment = json.loads(alignment_path.read_text(encoding="utf-8"))
+        aligned = {entry["id"]: entry for entry in alignment}
+        changed = set(int(position) for position in positions)
+        replacements = {item.position: item for item in project.segment_replacements.all()}
+
+        for entry in entries:
+            segment = segments.get(entry["id"])
+            if not segment:
+                raise ProcessingError("Phrase structure changed; alignment is required")
+            segment.text = entry["text"]
+            segment.video_start = entry["video_start"]
+            segment.video_end = entry["video_end"]
+            segment.save(update_fields=["text", "video_start", "video_end"])
+            previous = aligned.get(entry["id"])
+            if previous:
+                previous["text"] = entry["text"]
+                previous["video_start"] = entry["video_start"]
+                previous["video_end"] = entry["video_end"]
+            if entry["id"] not in changed or not segment.audio_file:
+                continue
+            replacement = replacements.get(entry["id"])
+            if replacement:
+                cut_replacement_segment(project, replacement)
+                continue
+            raw_path = Path(segment.audio_file.path)
+            source_duration = probe_duration(raw_path)
+            available = max(0.05, segment.video_end - segment.video_start - MIN_VIDEO_GAP)
+            speed = max(1.0, source_duration / available)
+            expected = min(source_duration / speed, available)
+            fitted_path = fitted_dir / f"{entry['id']:03d}.wav"
+            run([
+                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(raw_path), "-af", ",".join(fitting_filters(project, speed, expected, available)),
+                "-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le", str(fitted_path),
+            ])
+            segment.source_duration = source_duration
+            segment.output_duration = probe_duration(fitted_path)
+            segment.speed = speed
+            segment.save(update_fields=["source_duration", "output_duration", "speed"])
+
+        alignment_path.write_text(
+            json.dumps([aligned.get(entry["id"], entry) for entry in entries], ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        project.processing_status = "complete"
+        project.processing_step = "complete"
+        project.processing_error = ""
+        project.pending_reprocessing = {}
+        project.output_file = ""
+        project.export_manifest = {}
+        project.save(update_fields=[
+            "processing_status", "processing_step", "processing_error",
+            "pending_reprocessing", "output_file", "export_manifest",
+        ])
+    except Exception as error:
+        project.processing_status = "failed"
+        project.processing_error = str(error)
+        project.save(update_fields=["processing_status", "processing_error"])
+        raise
+
+
+def process_project(
+    project,
+    reuse_transcription=False,
+    realign_from_position=None,
+    preserve_following=True,
+    timing_only_positions=None,
+):
+    if timing_only_positions is not None:
+        return apply_timing_changes(project, timing_only_positions)
     if (not project.timecodes_text.strip() and not project.timecodes_file) or not project.video_file:
         raise ProcessingError("Audio, timecodes, and video are required")
     first_step = "aligning" if reuse_transcription else "preparing"
@@ -652,11 +766,13 @@ def process_project(project, reuse_transcription=False, realign_from_position=No
             ensure_editor_assets(project, source_wav)
             update_progress(project, "transcribing")
             words = transcribe(groq_audio, transcription_path)["words"]
+            groq_audio.unlink(missing_ok=True)
         video_duration = probe_duration(project.video_file.path)
         timecodes_text = project.timecodes_text.strip()
         if not timecodes_text:
             timecodes_text = Path(project.timecodes_file.path).read_text(encoding="utf-8-sig")
-        entries = parse_timecodes(timecodes_text, video_duration)
+        script_name = project.timecodes_name if project.timecodes_file else ""
+        entries = parse_timecodes(timecodes_text, video_duration, script_name)
         update_progress(project, "aligning")
         fixed_entries = {}
         affected_positions = {entry["id"] for entry in entries}
@@ -672,6 +788,8 @@ def process_project(project, reuse_transcription=False, realign_from_position=No
                 if (
                     entry["id"] < realign_from_position
                     or (
+                        preserve_following
+                        and
                         entry["id"] > realign_from_position
                         and entry.get("status") in {"ok", "manual", "replacement"}
                         and entry.get("audio_start") is not None
@@ -692,6 +810,8 @@ def process_project(project, reuse_transcription=False, realign_from_position=No
         update_progress(project, "cutting")
         if realign_from_position is None:
             project.segments.all().delete()
+        elif not preserve_following:
+            project.segments.filter(position__gte=realign_from_position).delete()
         existing_segments = {
             segment.position: segment for segment in project.segments.all()
         }
@@ -721,8 +841,7 @@ def process_project(project, reuse_transcription=False, realign_from_position=No
                 available = max(0.05, entry["video_end"] - entry["video_start"] - MIN_VIDEO_GAP)
                 speed = max(1.0, source_duration / available)
                 expected = min(source_duration / speed, available)
-                filters = atempo_filters(speed) + ["afade=t=in:st=0:d=0.008",
-                    f"afade=t=out:st={max(0, expected-0.008):.6f}:d=0.008", f"atrim=duration={available:.6f}"]
+                filters = fitting_filters(project, speed, expected, available)
                 fitted_path = fitted_dir / f"{entry['id']:03d}.wav"
                 run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(raw_path),
                      "-af", ",".join(filters), "-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le", str(fitted_path)])
@@ -740,8 +859,15 @@ def process_project(project, reuse_transcription=False, realign_from_position=No
             )
         project.processing_status, project.processing_step, project.processing_error = "complete", "complete", ""
         project.transcription_file = transcription_path.relative_to(settings.MEDIA_ROOT).as_posix()
+        project.transcription_audio_revision = project.audio_revision
         project.output_file = ""
-        project.save(update_fields=["processing_status", "processing_step", "processing_error", "transcription_file", "output_file"])
+        project.export_manifest = {}
+        project.pending_reprocessing = {}
+        project.save(update_fields=[
+            "processing_status", "processing_step", "processing_error",
+            "transcription_file", "transcription_audio_revision", "output_file",
+            "export_manifest", "pending_reprocessing",
+        ])
     except Exception as error:
         project.processing_status, project.processing_error = "failed", str(error)
         project.save(update_fields=["processing_status", "processing_error"])
@@ -756,6 +882,9 @@ def render_project_result(project):
     work_dir = Path(settings.MEDIA_ROOT) / "jobs" / str(project.id)
     alignment_path = work_dir / "alignment.json"
     try:
+        output_dir = work_dir / "output"
+        if output_dir.is_dir():
+            shutil.rmtree(output_dir)
         if not alignment_path.exists():
             raise ProcessingError("Saved alignment is missing; process fragments first")
         entries = json.loads(alignment_path.read_text(encoding="utf-8"))
@@ -776,10 +905,20 @@ def render_project_result(project):
         output_path = render_output(
             project, entries, fitted_files, video_duration, work_dir
         )
+        clip_paths = {
+            position: Path(settings.MEDIA_ROOT) / segment.audio_file.name
+            for position, segment in segments.items()
+            if segment.audio_file
+        }
+        sidecars = create_sidecar_exports(work_dir / "output", entries, clip_paths)
         project.processing_status, project.processing_step, project.processing_error = "complete", "complete", ""
         project.output_file = output_path.relative_to(settings.MEDIA_ROOT).as_posix()
+        project.export_manifest = {
+            name: path.relative_to(settings.MEDIA_ROOT).as_posix()
+            for name, path in sidecars.items()
+        }
         project.save(
-            update_fields=["processing_status", "processing_step", "processing_error", "output_file"]
+            update_fields=["processing_status", "processing_step", "processing_error", "output_file", "export_manifest"]
         )
     except Exception as error:
         project.processing_status, project.processing_error = "failed", str(error)

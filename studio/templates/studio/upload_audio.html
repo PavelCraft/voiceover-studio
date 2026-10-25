@@ -1,46 +1,12 @@
 {% extends "studio/base.html" %}
 {% load i18n %}
 {% block title %}{% trans "Upload voiceover — Voiceover Studio" %}{% endblock %}
-{% block navigation %}
-<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
-  <a class="button secondary" href="{% url 'home' %}">{% trans "Back" %}</a>
-  {% if project %}<a class="button secondary" href="{% url 'upload-video' project_id=project.id %}">{% trans "Forward" %}</a>{% else %}<span></span>{% endif %}
-</nav>
-{% endblock %}
+{% block topbar_title %}{% trans "Voiceover project" %}{% endblock %}
+{% block workspace_class %}workflow-workspace{% endblock %}
+{% block navigation %}<nav class="workflow-nav"><a href="{% url 'project-timing' project_id=project.id %}">← {% trans "Back to timecodes" %}</a><span class="workflow-nav-actions"><span>{% trans "Draft saved automatically" %}</span>{% if project.audio_file %}<a href="{% url 'project-summary' project_id=project.id %}">{% trans "Go to review before processing" %} →</a>{% endif %}</span></nav>{% endblock %}
 {% block content %}
-<p class="step">{% trans "Step 1 of 2" %}</p>
-<h1>{% trans "Add the voiceover" %}</h1>
-<section class="card instructions">
-  <h2>{% trans "Record with ChatGPT and Tab Sound Recorder" %}</h2>
-  <ol>
-    <li>{% trans "Open ChatGPT in the browser and send it the text that should be spoken." %}</li>
-    <li>{% trans "Ask ChatGPT to return the text as a message, without timecodes or any extra commentary." %}</li>
-    <li>{% trans "Open the response containing only that text." %}</li>
-    <li>{% trans "Before pressing ChatGPT’s “Read aloud” button, open Tab Sound Recorder and press “Start recording”." %}</li>
-    <li>{% trans "Press “Read aloud” in ChatGPT and wait until the complete text has been read." %}</li>
-    <li>{% trans "Return to Tab Sound Recorder and press “Stop and save”." %}</li>
-  </ol>
-  <p>{% trans "You can also upload a recording made with any other tool. The studio does not require the browser extension." %}</p>
-  <p><a href="https://github.com/PavelCraft/tab-sound-recorder" target="_blank" rel="noopener noreferrer">{% trans "Download Tab Sound Recorder from GitHub" %}</a></p>
-</section>
-<section class="card">
-  <h2>{% trans "Upload a recording" %}</h2>
-  <p class="muted">{% trans "Accepted formats: MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4, and MKV." %}</p>
-  <p class="muted">{% trans "Enter the phrases with their target video start times or upload a TXT file. The text must be in the same language as the recording." %}</p>
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    <label for="id_audio_file">{% trans "Voiceover recording" %}</label>
-    {{ form.audio_file }}
-    {{ form.audio_file.errors }}
-    <label for="id_timecodes_text">{% trans "Text with video timecodes" %}</label>
-    {{ form.timecodes_text }}
-    {{ form.timecodes_text.errors }}
-    <p class="or-divider">{% trans "or" %}</p>
-    <label for="id_timecodes_file">{% trans "Or upload a TXT file" %}</label>
-    {{ form.timecodes_file }}
-    {{ form.timecodes_file.errors }}
-    <button class="button primary" type="submit">{% trans "Next" %}</button>
-  </form>
-</section>
+<header class="workflow-header"><div><p class="eyebrow"><span></span>{% trans "Guided workflow" %}</p><h1>{% trans "Voice a finished video" %}</h1></div>{% include "studio/includes/voiceover_workflow_steps.html" with current_step="voiceover" %}</header>
+<div class="work-layout"><section class="card work-card"><div class="card-heading"><span class="heading-icon"><svg viewBox="0 0 24 24"><path d="M12 4v10M8 8v6M16 7v7M5 11v3M19 10v4M5 18h14"/></svg></span><div><p class="step">{% trans "Step 3 of 3" %}</p><h2>{% trans "Add the voiceover" %}</h2><p>{% trans "Upload the complete recording that will be split and fitted to the prepared phrase timecodes." %}</p></div></div>
+<form method="post" enctype="multipart/form-data" class="studio-form">{% csrf_token %}{{ form.non_field_errors }}<div class="field-block"><div class="field-title"><label for="id_audio_file">{% trans "Voiceover recording" %}</label><span>{% if project.audio_file %}{% trans "Saved" %}{% else %}{% trans "Required" %}{% endif %}</span></div><div class="file-drop">{{ form.audio_file }}<span class="file-drop-icon"><svg viewBox="0 0 24 24"><path d="M12 16V5M8 9v6M16 7v8M5 11v4M19 10v5M5 18h14"/></svg></span><strong>{% if project.audio_file %}{{ project.audio_name }}{% else %}{% trans "Choose an audio file" %}{% endif %}</strong><small>{% if project.audio_file %}{% trans "Choose another file only if you want to replace the voiceover" %}{% else %}{% trans "MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4 or MKV" %}{% endif %}</small></div>{{ form.audio_file.errors }}</div><div class="form-footer"><span><i></i>{% trans "Files stay on this computer" %}</span><button class="button primary" type="submit">{% if project.audio_file %}{% trans "Save changes and go to review" %}{% else %}{% trans "Continue to review before processing" %}{% endif %} <b>→</b></button></div></form></section>
+<aside class="context-panel"><section class="file-ready"><i>✓</i><span><strong>{% trans "Source video added" %}</strong><small>{{ project.video_name }}</small></span></section><section class="file-ready"><i>✓</i><span><strong>{% trans "Timecodes prepared" %}</strong><small>{% if project.timing_project.mode == 'automatic' %}{% trans "Created automatically" %}{% elif project.timing_project %}{% trans "Created manually in the timing editor" %}{% elif project.timecodes_file %}{% trans "Imported from a file" %}{% else %}{% trans "Entered as text" %}{% endif %}</small></span></section></aside></div>
 {% endblock %}

@@ -1,48 +1,22 @@
 {% extends "studio/base.html" %}
 {% load i18n %}
 {% block title %}{% trans "My projects — Voiceover Studio" %}{% endblock %}
+{% block topbar_title %}{% trans "My projects" %}{% endblock %}
 {% block content %}
-<div class="dashboard-heading">
-  <div>
-    <p class="step">{% trans "Personal account" %}</p>
-    <h1>{% trans "My projects" %}</h1>
-  </div>
-  <a class="button primary" href="{% url 'upload-audio' %}">{% trans "New voiceover project" %}</a>
-</div>
+<div class="page-heading"><div><p class="eyebrow"><span></span>{% trans "Project library" %}</p><h1>{% trans "My projects" %}</h1><p class="lead">{% trans "Continue your work or start a new voiceover." %}</p></div></div>
 {% for message in messages %}<div class="notice{% if message.tags == 'error' %} error-box{% endif %}">{{ message }}</div>{% endfor %}
-{% if projects %}
-<div class="project-list">
+{% if projects or localizations or takes_projects %}
+<div class="project-grid">
+  {% for localization in localizations %}<article class="project-card"><div class="project-preview"><span class="project-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="project-status status-complete"><i></i>{% trans "Localization" %}</span></div><div class="project-card-body"><p class="project-date">{{ localization.created_at|date:"d.m.Y · H:i" }}</p><h2>{{ localization.display_name }}</h2><p class="project-video">{% blocktrans with count=localization.versions.count %}{{ count }} language versions{% endblocktrans %}</p><div class="project-actions"><a class="button primary" href="{% url 'localization-detail' project_id=localization.id %}">{% trans "Open project" %}</a></div></div></article>{% endfor %}
+  {% for takes_project in takes_projects %}<article class="project-card"><div class="project-preview"><span class="project-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="project-status status-{{ takes_project.processing_status }}"><i></i>{% trans "Takes" %}</span></div><div class="project-card-body"><p class="project-date">{{ takes_project.created_at|date:"d.m.Y · H:i" }}</p><h2>{{ takes_project.display_name }}</h2><p class="project-video">{% blocktrans with count=takes_project.phrases.count %}{{ count }} phrases{% endblocktrans %}</p><div class="project-actions"><a class="button primary" href="{% url 'takes-detail' project_id=takes_project.id %}">{% trans "Open project" %}</a></div></div></article>{% endfor %}
   {% for project in projects %}
-  <article class="card project-card">
-    <div class="project-card-main">
-      <div>
-        <h2>{{ project.audio_name }}</h2>
-        <p class="muted">{{ project.created_at|date:"d.m.Y H:i" }} · {{ project.video_name }}</p>
-      </div>
-      <span class="project-status status-{{ project.processing_status }}">
-        {% if project.processing_status == "complete" %}{% trans "Ready" %}
-        {% elif project.processing_status == "failed" %}{% trans "Error" %}
-        {% elif project.processing_status == "processing" or project.processing_status == "queued" %}{% trans "Processing" %}
-        {% else %}{% trans "Draft" %}{% endif %}
-      </span>
-    </div>
-    <dl class="project-details">
-      <dt>{% trans "Export" %}</dt><dd>{{ project.get_output_mode_display }}</dd>
-      <dt>{% trans "Fragments" %}</dt><dd>{{ project.segments.count }}</dd>
-    </dl>
-    <div class="project-actions">
-      <a class="button primary" href="{% url 'project-summary' project_id=project.id %}">{% trans "Open project" %}</a>
-      <a class="button secondary" href="{% url 'edit-audio' project_id=project.id %}">{% trans "Edit files" %}</a>
-      <a class="button danger-button" href="{% url 'delete-project' project_id=project.id %}">{% trans "Delete" %}</a>
-    </div>
+  <article class="project-card">
+    <div class="project-preview"><span class="project-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="project-status status-{{ project.processing_status }}"><i></i>{% if project.processing_status == "complete" %}{% trans "Ready" %}{% elif project.processing_status == "failed" %}{% trans "Error" %}{% elif project.processing_status == "processing" or project.processing_status == "queued" %}{% trans "Processing" %}{% else %}{% trans "Draft" %}{% endif %}</span></div>
+    <div class="project-card-body"><p class="project-date">{{ project.created_at|date:"d.m.Y · H:i" }}</p><h2 title="{{ project.audio_name }}">{{ project.audio_name }}</h2><p class="project-video" title="{{ project.video_name }}">{{ project.video_name|default:"—" }}</p><dl><div><dt>{% trans "Export" %}</dt><dd>{{ project.get_output_mode_display }}</dd></div><div><dt>{% trans "Fragments" %}</dt><dd>{{ project.segments.count }}</dd></div></dl><div class="project-actions"><a class="button primary" href="{% url 'project-summary' project_id=project.id %}">{% trans "Open project" %}</a><a class="icon-action" href="{% url 'edit-audio' project_id=project.id %}" aria-label="{% trans 'Edit files' %}" title="{% trans 'Edit files' %}"><svg viewBox="0 0 24 24"><path d="m5 16-1 4 4-1L19 8l-3-3zM14 7l3 3"/></svg></a><a class="icon-action danger" href="{% url 'delete-project' project_id=project.id %}" aria-label="{% trans 'Delete' %}" title="{% trans 'Delete' %}"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M8 10v7M12 10v7M16 10v7M7 7l1 13h8l1-13"/></svg></a></div></div>
   </article>
   {% endfor %}
 </div>
 {% else %}
-<section class="card empty-state">
-  <h2>{% trans "There are no projects yet" %}</h2>
-  <p class="muted">{% trans "Create your first project to recognize, split and mount a voiceover." %}</p>
-  <a class="button primary" href="{% url 'upload-audio' %}">{% trans "Create project" %}</a>
-</section>
+<section class="empty-state card"><span class="empty-orbit" aria-hidden="true"><i></i><svg viewBox="0 0 24 24"><path d="M5 8h5l2 2h7v9H5zM12 13v4M10 15h4"/></svg></span><p class="eyebrow">{% trans "Your workspace" %}</p><h2>{% trans "There are no projects yet" %}</h2><p class="muted">{% trans "Choose a workflow and create your first voiceover project." %}</p><a class="button primary" href="{% url 'project-scenario-select' %}">{% trans "Choose workflow" %}</a></section>
 {% endif %}
 {% endblock %}

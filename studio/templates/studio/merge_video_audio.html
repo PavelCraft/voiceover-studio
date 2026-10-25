@@ -1,68 +1,21 @@
 {% extends "studio/base.html" %}
 {% load i18n %}
 {% block title %}{% trans "Combine video with audio — Voiceover Studio" %}{% endblock %}
-{% block navigation %}
-<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
-  <a class="button secondary" href="{% url 'tools-index' %}">{% trans "Back" %}</a>
-  <span></span>
-</nav>
-{% endblock %}
+{% block topbar_title %}{% trans "Combine video with audio" %}{% endblock %}
+{% block navigation %}<nav class="workflow-nav"><a href="{% url 'tools-index' %}">← {% trans "All tools" %}</a><span>{% trans "Tool 01" %}</span></nav>{% endblock %}
 {% block content %}
-<p class="eyebrow">{% trans "Tool 01" %}</p>
-<h1>{% trans "Combine video with audio" %}</h1>
-<p class="lead">{% trans "Upload a video and a new audio track. The result will keep the full video duration." %}</p>
-
-<section class="card">
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-
-    <label for="id_video_file">{% trans "Source video" %}</label>
-    {{ form.video_file }}
-    {{ form.video_file.errors }}
-    <p class="muted field-note">{% trans "Accepted formats: MP4, WebM, MKV, MOV, AVI, and M4V." %}</p>
-
-    <label for="id_audio_file">{% trans "New audio track" %}</label>
-    {{ form.audio_file }}
-    {{ form.audio_file.errors }}
-    <p class="muted field-note">{% trans "Accepted formats: MP3, WAV, WebM, OGG, M4A, AAC, FLAC, MP4, and MKV." %}</p>
-
-    <div class="toggle-card">
-      <label class="toggle-option" for="id_mix_original">
-        <span class="toggle">
-          {{ form.mix_original }}
-          <i aria-hidden="true"></i>
-        </span>
-        <span class="toggle-copy">
-          <strong>{% trans "Mix with the original sound" %}</strong>
-          <small>{{ form.mix_original.help_text }}</small>
-        </span>
-      </label>
-      {{ form.mix_original.errors }}
-      <p
-        class="mode-summary"
-        id="mode-summary"
-        data-replace="{% trans 'The original sound will be muted and replaced with the new track.' %}"
-        data-mix="{% trans 'The new track will play together with the original video sound.' %}"
-        aria-live="polite"
-      ></p>
-    </div>
-
-    <button class="button primary" type="submit">{% trans "Create video" %}</button>
+<div class="page-heading compact"><div><p class="eyebrow"><span></span>{% trans "Quick tool" %}</p><h1>{% trans "Combine video with audio" %}</h1><p class="lead">{% trans "Upload a video and a new audio track. The result will keep the full video duration." %}</p></div></div>
+<section class="card work-card tool-work-card">
+  <form method="post" enctype="multipart/form-data" class="studio-form two-file-form">
+    {% csrf_token %}{{ form.non_field_errors }}
+    <div class="field-block"><div class="field-title"><label for="id_video_file">{% trans "Source video" %}</label></div><div class="file-drop small">{{ form.video_file }}<span class="file-drop-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM10 9l5 3-5 3z"/></svg></span><strong>{% trans "Choose video" %}</strong><small>MP4, WebM, MKV, MOV, AVI, M4V</small></div>{{ form.video_file.errors }}</div>
+    <div class="field-block"><div class="field-title"><label for="id_audio_file">{% trans "New audio track" %}</label></div><div class="file-drop small">{{ form.audio_file }}<span class="file-drop-icon"><svg viewBox="0 0 24 24"><path d="M5 12h2l2-5 3 10 3-8 2 3h2"/></svg></span><strong>{% trans "Choose audio" %}</strong><small>MP3, WAV, WebM, OGG, M4A, AAC, FLAC</small></div>{{ form.audio_file.errors }}</div>
+    <div class="toggle-card full-span"><label class="toggle-option" for="id_mix_original"><span class="toggle">{{ form.mix_original }}<i aria-hidden="true"></i></span><span class="toggle-copy"><strong>{% trans "Mix with the original sound" %}</strong><small>{{ form.mix_original.help_text }}</small></span></label>{{ form.mix_original.errors }}<p class="mode-summary" id="mode-summary" data-replace="{% trans 'The original sound will be muted and replaced with the new track.' %}" data-mix="{% trans 'The new track will play together with the original video sound.' %}" aria-live="polite"></p></div>
+    <div class="prototype-settings-row full-span"><label><span>{{ form.voice_volume.label }}</span>{{ form.voice_volume }}{{ form.voice_volume.errors }}</label><label class="mix-setting"><span>{{ form.original_volume.label }}</span>{{ form.original_volume }}{{ form.original_volume.errors }}</label><label><span>{{ form.start_offset.label }}</span>{{ form.start_offset }}{{ form.start_offset.errors }}</label></div>
+    <div class="toggle-card full-span mix-setting"><label class="toggle-option" for="id_duck_original"><span class="toggle">{{ form.duck_original }}<i aria-hidden="true"></i></span><span class="toggle-copy"><strong>{{ form.duck_original.label }}</strong><small>{% trans "The original track becomes quieter while the new voice is sounding." %}</small></span></label>{{ form.duck_original.errors }}</div>
+    <div class="toggle-card full-span"><label class="toggle-option" for="id_trim_to_video"><span class="toggle">{{ form.trim_to_video }}<i aria-hidden="true"></i></span><span class="toggle-copy"><strong>{{ form.trim_to_video.label }}</strong><small>{% trans "Disable this only when the audio is intentionally longer than the video." %}</small></span></label>{{ form.trim_to_video.errors }}</div>
+    <div class="form-footer full-span"><span><i></i>{% trans "Files stay on this computer" %}</span><button class="button primary" type="submit">{% trans "Create video" %} <b>→</b></button></div>
   </form>
 </section>
-
-<script>
-(() => {
-  const input = document.getElementById("id_mix_original");
-  const summary = document.getElementById("mode-summary");
-  function updateSummary() {
-    summary.textContent = input.checked
-      ? summary.dataset.mix
-      : summary.dataset.replace;
-  }
-  input.addEventListener("change", updateSummary);
-  updateSummary();
-})();
-</script>
+<script>(()=>{const input=document.getElementById("id_mix_original"),summary=document.getElementById("mode-summary"),settings=document.querySelectorAll(".mix-setting");function update(){summary.textContent=input.checked?summary.dataset.mix:summary.dataset.replace;settings.forEach(node=>{node.hidden=!input.checked})}input.addEventListener("change",update);update()})();</script>
 {% endblock %}

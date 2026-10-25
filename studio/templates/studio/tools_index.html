@@ -1,24 +1,26 @@
 {% extends "studio/base.html" %}
 {% load i18n %}
 {% block title %}{% trans "Tools — Voiceover Studio" %}{% endblock %}
-{% block navigation %}
-<nav class="workflow-nav" aria-label="{% trans 'Step navigation' %}">
-  <a class="button secondary" href="{% url 'home' %}">{% trans "Back" %}</a>
-  <span></span>
-</nav>
-{% endblock %}
+{% block topbar_title %}{% trans "Tools" %}{% endblock %}
 {% block content %}
-<section class="hero">
-  <p class="eyebrow">{% trans "Media utilities" %}</p>
-  <h1>{% trans "Tools" %}</h1>
-  <p class="lead">{% trans "Run individual audio and video operations without creating a voiceover project." %}</p>
+<div class="page-heading tools-heading"><div><p class="eyebrow"><span></span>{% trans "Media utilities" %}</p><h1>{% trans "Tools" %}</h1><p class="lead">{% trans "Upload files, configure one operation and get the result — without creating a project." %}</p></div><span class="tools-principle"><i>↳</i>{% trans "One tool — one finished task" %}</span></div>
+<section class="tool-catalog-section">
+  <div class="section-heading"><div><p class="section-kicker">{% trans "Available now" %}</p><h2>{% trans "Video, audio and text" %}</h2></div><span class="count-badge">03</span></div>
+  <div class="tool-grid">
+    <a class="tool-card featured" href="{% url 'merge-video-audio' %}"><span class="tool-card-top"><span class="tool-icon teal"><svg viewBox="0 0 24 24"><path d="M4 7h10v10H4zM14 10h6v7h-6M8 11h2M9 10v2"/></svg></span><i class="status-chip available">{% trans "Available" %}</i></span><span><strong>{% trans "Combine video with audio" %}</strong><small>{% trans "Replace the original sound, keep it in the mix and later adjust the balance between both tracks." %}</small></span><span class="capability-row"><i>{% trans "Replace sound" %}</i><i>{% trans "Mix tracks" %}</i><i>{% trans "Keep video quality" %}</i></span><b>{% trans "Open tool" %} →</b></a>
+    <a class="tool-card featured transcript-card" href="{% url 'transcribe-audio' %}"><span class="tool-card-top"><span class="tool-icon blue"><svg viewBox="0 0 24 24"><path d="M5 5h9M5 9h14M5 13h11M5 17h7M18 15v5M15.5 17.5h5"/></svg></span><i class="status-chip available">{% trans "Available" %}</i></span><span><strong>{% trans "Audio to text" %}</strong><small>{% trans "Turn speech from an audio or video file into readable text with punctuation and paragraphs." %}</small></span><span class="capability-row"><i>{% trans "Punctuation" %}</i><i>{% trans "Paragraphs" %}</i><i>TXT / DOCX</i></span><b>{% trans "Open tool" %} →</b></a>
+    <a class="tool-card featured timing-card" href="{% url 'phrase-timing' %}"><span class="tool-card-top"><span class="tool-icon violet"><svg viewBox="0 0 24 24"><path d="M5 6h14M7 10h7M7 14h10M7 18h5M4 4v16M16 4v4M14 6h4"/></svg></span><i class="status-chip available">{% trans "Available" %}</i></span><span><strong>{% trans "Phrase timing" %}</strong><small>{% trans "Watch the video once and assign timecodes to prepared phrases with the keyboard." %}</small></span><span class="capability-row"><i>{% trans "Fast marking" %}</i><i>{% trans "SRT and VTT" %}</i><i>{% trans "Keyboard control" %}</i></span><b>{% trans "Open tool" %} →</b></a>
+  </div>
 </section>
-<section class="tool-grid">
-  <article class="card tool-card">
-    <p class="tool-number">01</p>
-    <h2>{% trans "Combine video with audio" %}</h2>
-    <p>{% trans "Replace the original video sound with another track or mix both tracks together." %}</p>
-    <a class="button primary" href="{% url 'merge-video-audio' %}">{% trans "Open tool" %}</a>
-  </article>
+<section class="tool-catalog-section">
+  <div class="section-heading"><div><p class="section-kicker">{% trans "Available now" %}</p><h2>{% trans "Focused audio operations" %}</h2></div><span class="count-badge">06</span></div>
+  <div class="tool-grid">
+    <a class="tool-card" href="{% url 'tool-prototype' tool_slug='replace-fragment' %}"><span class="tool-card-top"><span class="tool-icon rose"><svg viewBox="0 0 24 24"><path d="M4 12h5M15 12h5M9 8v8M15 7v10M7 6l2 2M17 16l2 2"/></svg></span><i class="status-chip available">{% trans "Available" %}</i></span><span><strong>{% trans "Replace a voiceover fragment" %}</strong><small>{% trans "Select one interval, add a new phrase and listen to the transition before saving the updated file." %}</small></span><span class="capability-row"><i>{% trans "One precise replacement" %}</i><i>{% trans "Transition preview" %}</i></span><b>{% trans "Open tool" %} →</b></a>
+    <a class="tool-card" href="{% url 'tool-prototype' tool_slug='split-phrases' %}"><span class="tool-card-top"><span class="tool-icon violet"><svg viewBox="0 0 24 24"><path d="M5 5v14M19 5v14M8 9h8M8 15h8M10 7v4M14 13v4"/></svg></span><i class="status-chip available">{% trans "Available" %}</i></span><span><strong>{% trans "Split voiceover into phrases" %}</strong><small>{% trans "Split a long recording by script, subtitles, pauses or manually adjusted boundaries." %}</small></span><span class="capability-row"><i>{% trans "SRT and VTT" %}</i><i>{% trans "Named files" %}</i></span><b>{% trans "Open tool" %} →</b></a>
+    <a class="tool-card" href="{% url 'tool-prototype' tool_slug='fit-subtitles' %}"><span class="tool-card-top"><span class="tool-icon amber"><svg viewBox="0 0 24 24"><path d="M4 8h12M4 12h9M4 16h11M18 6v12M16 9l2-2 2 2"/></svg></span><i class="status-chip available">{% trans "Available" %}</i></span><span><strong>{% trans "Fit audio to subtitles" %}</strong><small>{% trans "Place a single recording or a set of phrases into prepared SRT or VTT time intervals." %}</small></span><span class="capability-row"><i>{% trans "Timing control" %}</i><i>{% trans "Speed warnings" %}</i></span><b>{% trans "Open tool" %} →</b></a>
+    <a class="tool-card" href="{% url 'tool-prototype' tool_slug='prepare-voiceover' %}"><span class="tool-card-top"><span class="tool-icon teal"><svg viewBox="0 0 24 24"><path d="M4 12h2l2-5 3 10 3-8 2 3h4M6 20h12"/></svg></span><i class="status-chip available">{% trans "Available" %}</i></span><span><strong>{% trans "Prepare voiceover" %}</strong><small>{% trans "Prepare one file or a whole set: trim edge silence, normalize loudness, prevent clipping and add soft fades." %}</small></span><span class="capability-row"><i>{% trans "Batch processing" %}</i><i>{% trans "Optional WAV" %}</i></span><b>{% trans "Open tool" %} →</b></a>
+    <a class="tool-card" href="{% url 'tool-prototype' tool_slug='check-durations' %}"><span class="tool-card-top"><span class="tool-icon blue"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h4M8 13h2M14 9l1 1 2-2M14 14l1 1 2-2"/></svg></span><i class="status-chip available">{% trans "Available" %}</i></span><span><strong>{% trans "Check phrase durations" %}</strong><small>{% trans "Compare subtitles with a folder of phrases and see where audio will not fit before assembly." %}</small></span><span class="capability-row"><i>{% trans "Problem table" %}</i><i>{% trans "Batch check" %}</i></span><b>{% trans "Open tool" %} →</b></a>
+    <a class="tool-card" href="{% url 'tool-prototype' tool_slug='create-subtitles' %}"><span class="tool-card-top"><span class="tool-icon violet"><svg viewBox="0 0 24 24"><path d="M5 6h14v9H9l-4 3zM8 9h8M8 12h5"/></svg></span><i class="status-chip available">{% trans "Available" %}</i></span><span><strong>{% trans "Create synchronized subtitles" %}</strong><small>{% trans "Turn a prepared script and finished voiceover into subtitles with accurate timecodes." %}</small></span><span class="capability-row"><i>{% trans "SRT and VTT export" %}</i><i>{% trans "Text matching" %}</i></span><b>{% trans "Open tool" %} →</b></a>
+  </div>
 </section>
 {% endblock %}
