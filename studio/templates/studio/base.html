@@ -31,7 +31,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 15h6v4h-6z"/></svg><span>{% trans "My projects" %}</span>
         </a>
         {% endif %}
-        <a class="{% if current == 'tools-index' or current == 'transcribe-audio' or current == 'transcribe-audio-job' or current == 'phrase-timing' or current == 'phrase-timing-editor' or current == 'tool-prototype' or current == 'merge-video-audio' or current == 'merge-video-audio-job' %}active{% endif %}" href="{% url 'tools-index' %}" title="{% trans 'Tools' %}">
+        <a class="{% if current == 'tools-index' or current == 'transcribe-audio' or current == 'transcribe-audio-job' or current == 'phrase-timing' or current == 'phrase-timing-editor' or current == 'tool-prototype' or current == 'audio-editor-job' or current == 'merge-video-audio' or current == 'merge-video-audio-job' %}active{% endif %}" href="{% url 'tools-index' %}" title="{% trans 'Tools' %}">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-2.3 2.3-3-3z"/></svg><span>{% trans "Tools" %}</span>
         </a>
       </nav>

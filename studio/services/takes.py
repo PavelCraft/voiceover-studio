@@ -11,7 +11,7 @@ from studio.services.voiceover import (
     probe_duration,
     render_project_result,
     run,
-    transcribe,
+    transcribe_long_audio,
 )
 from voiceover_core.alignment import find_take_candidates, tokenize
 from voiceover_core.subtitles import parse_script
@@ -58,7 +58,7 @@ def process_takes_project(project):
             transcription_path = recording_dir / "transcription.json"
             run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", recording.media_file.path, "-vn", "-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le", str(source_wav)])
             run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", recording.media_file.path, "-vn", "-ar", "16000", "-ac", "1", "-c:a", "flac", str(source_flac)])
-            words = transcribe(source_flac, transcription_path)["words"]
+            words = transcribe_long_audio(source_flac, transcription_path)["words"]
             recording.transcription_file = transcription_path.relative_to(settings.MEDIA_ROOT).as_posix()
             recording.save(update_fields=["transcription_file"])
             matches = find_take_candidates(prepared_entries, words, minimum_score=.43)

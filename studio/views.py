@@ -1,4 +1,5 @@
 import json
+import math
 import mimetypes
 import re
 import shutil
@@ -49,6 +50,7 @@ from .workers import (
     start_takes_worker,
 )
 from voiceover_core.diagnostics import DiagnosticOptions, diagnose_segments
+from voiceover_core.media import MAX_AUDIO_EDIT_SPEED, MIN_AUDIO_EDIT_SPEED, normalize_mp3_bitrate
 from voiceover_core.subtitles import SubtitleParseError, parse_script
 from voiceover_core.timing import export_timed_phrases, normalize_timed_phrases, parse_editable_timing_text, split_script
 from voiceover_core.exports import create_clips_archive
@@ -329,6 +331,11 @@ def takes_scenario(request):
 
 
 TOOL_PROTOTYPES = {
+    "edit-audio": {
+        "title": gettext_lazy("Edit audio"),
+        "description": gettext_lazy("Cut unwanted parts and change the speed of selected fragments on a waveform."),
+        "key": "edit-audio",
+    },
     "replace-fragment": {
         "title": gettext_lazy("Replace a voiceover fragment"),
         "description": gettext_lazy("Replace one phrase in a finished file and check the transition before export."),
@@ -371,12 +378,15 @@ def tool_prototype(request, tool_slug):
     if request.method == "POST" and form.is_valid():
         job = _create_media_tool_job(request, tool_slug, form.cleaned_data)
         start_media_tool_worker(job)
+        if tool_slug == MediaToolJob.KIND_EDIT_AUDIO:
+            return redirect("audio-editor-job", job_id=job.id)
         return redirect("media-tool-job", job_id=job.id)
     return render(request, "studio/tool_prototype.html", {"tool": tool, "form": form})
 
 
 TOOL_FILE_ROLES = {
     "audio-to-text": {"media": "media"},
+    "edit-audio": {"audio": "audio"},
     "replace-fragment": {"source": "source", "replacement": "replacement"},
     "split-phrases": {"audio": "audio", "script": "script"},
     "fit-subtitles": {"subtitles": "subtitles", "voiceovers": "voiceover"},
@@ -418,6 +428,25 @@ def _media_tool_job_for_request(request, job_id):
 def media_tool_job(request, job_id):
     job = _media_tool_job_for_request(request, job_id)
     tool = TOOL_PROTOTYPES[job.kind]
+    if job.kind == MediaToolJob.KIND_SPLIT:
+        segments = []
+        for stored_segment in (job.result_manifest or {}).get("segments", []):
+            segment = dict(stored_segment)
+            if segment.get("file"):
+                player_url = reverse("split-phrase-audio", kwargs={
+                    "job_id": job.id, "position": segment["position"],
+                })
+                path = Path(settings.MEDIA_ROOT) / segment["file"]
+                version = path.stat().st_mtime_ns if path.is_file() else 0
+                segment["player_url"] = f"{player_url}?v={version}"
+                segment["player_download_url"] = f"{player_url}?download=1&v={version}"
+            segments.append(segment)
+        return render(request, "studio/split_phrases_job.html", {
+            "job": job,
+            "tool": tool,
+            "segments": segments,
+            "output_url": f"{settings.MEDIA_URL}{job.result_file}" if job.result_file else "",
+        })
     suffix = Path(job.result_file).suffix.lower() if job.result_file else ""
     preview_kind = "video" if suffix in {".mp4", ".webm", ".mkv", ".mov"} else "audio" if suffix in {".mp3", ".wav", ".m4a", ".ogg", ".aac", ".flac"} else ""
     return render(request, "studio/media_tool_job.html", {
@@ -437,6 +466,586 @@ def media_tool_status(request, job_id):
         "failed": job.processing_status == "failed",
         "error": job.processing_error,
     })
+
+
+def _split_phrase_segment(job, position):
+    return next(
+        (item for item in (job.result_manifest or {}).get("segments", []) if int(item.get("position", 0)) == position),
+        None,
+    )
+
+
+@require_GET
+def split_phrase_editor_data(request, job_id, position):
+    job = _media_tool_job_for_request(request, job_id)
+    if job.kind != MediaToolJob.KIND_SPLIT or job.processing_status != "complete":
+        raise Http404
+    segments = (job.result_manifest or {}).get("segments", [])
+    segment = _split_phrase_segment(job, position)
+    if not segment:
+        raise Http404
+    index = segments.index(segment)
+    previous = segments[index - 1] if index else None
+    following = segments[index + 1] if index + 1 < len(segments) else None
+    start, end = segment.get("audio_start"), segment.get("audio_end")
+    if start is None:
+        start = previous.get("audio_end") if previous else 0
+    if end is None:
+        end = following.get("audio_start") if following else (job.result_manifest or {}).get("duration", 0)
+    source = Path(settings.MEDIA_ROOT) / job.result_manifest["source"]
+    return JsonResponse({
+        "position": position,
+        "text": segment["text"],
+        "previous_text": _context_tail(previous["text"]) if previous else "",
+        "next_text": _context_head(following["text"]) if following else "",
+        "audio_start": start,
+        "audio_end": end,
+        "focus": start or 0,
+        "duration": job.result_manifest.get("duration", 0),
+        "audio_url": request.build_absolute_uri(reverse("split-phrase-source", kwargs={"job_id": job.id})),
+        "peaks_url": f"{settings.MEDIA_URL}{job.result_manifest['peaks']}?v={source.stat().st_mtime_ns}",
+        "manual": bool(segment.get("manual")),
+        "skipped": False,
+        "save_url": request.build_absolute_uri(reverse("split-phrase-boundary", kwargs={"job_id": job.id, "position": position})),
+    })
+
+
+@require_GET
+def split_phrase_source(request, job_id):
+    job = _media_tool_job_for_request(request, job_id)
+    if job.kind != MediaToolJob.KIND_SPLIT or not (job.result_manifest or {}).get("source"):
+        raise Http404
+    path = Path(settings.MEDIA_ROOT) / job.result_manifest["source"]
+    if not path.is_file():
+        raise Http404
+    return _range_file_response(request, path, "audio/wav")
+
+
+@require_GET
+def split_phrase_audio(request, job_id, position):
+    job = _media_tool_job_for_request(request, job_id)
+    segment = _split_phrase_segment(job, position)
+    if job.kind != MediaToolJob.KIND_SPLIT or not segment or not segment.get("file"):
+        raise Http404
+    path = Path(settings.MEDIA_ROOT) / segment["file"]
+    if not path.is_file():
+        raise Http404
+    if request.GET.get("download") == "1":
+        return FileResponse(path.open("rb"), as_attachment=True, filename=path.name)
+    content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return _range_file_response(request, path, content_type)
+
+
+@require_POST
+def save_split_phrase_boundary(request, job_id, position):
+    job = _media_tool_job_for_request(request, job_id)
+    segment = _split_phrase_segment(job, position)
+    if job.kind != MediaToolJob.KIND_SPLIT or not segment:
+        raise Http404
+    try:
+        payload = json.loads(request.body or "{}")
+        start, end = float(payload["audio_start"]), float(payload["audio_end"])
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({"error": _("Select the beginning and end of the phrase.")}, status=400)
+    duration = float((job.result_manifest or {}).get("duration", 0))
+    if start < 0 or end > duration or start >= end:
+        return JsonResponse({"error": _("The selected phrase boundaries are invalid.")}, status=400)
+    from .services.tool_processing import rebuild_split_phrases_archive, render_split_phrase
+    segment.update(audio_start=start, audio_end=end, status="manual", manual=True)
+    try:
+        render_split_phrase(job, segment)
+        archive = rebuild_split_phrases_archive(job)
+    except ProcessingError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    job.result_file = archive.relative_to(settings.MEDIA_ROOT).as_posix()
+    job.save(update_fields=["result_manifest", "result_file"])
+    return JsonResponse({"ok": True, "processing": False})
+
+
+def audio_editor_job(request, job_id):
+    job = _media_tool_job_for_request(request, job_id)
+    if job.kind != MediaToolJob.KIND_EDIT_AUDIO:
+        raise Http404
+    manifest = job.result_manifest or {}
+    raw_tracks = manifest.get("tracks") or []
+    if not raw_tracks:
+        source = job.inputs.filter(role="audio").first()
+        if source and manifest.get("preview") and manifest.get("peaks"):
+            stored_name = Path(source.media_file.name).name
+            prefix = f"{source.position:03d}-"
+            raw_tracks = [{
+                "input_id": source.id,
+                "name": stored_name[len(prefix):] if stored_name.startswith(prefix) else stored_name,
+                "duration": manifest.get("duration", 0),
+                "preview": manifest["preview"], "peaks": manifest["peaks"],
+            }]
+    tracks = [
+        {
+            **track,
+            "preview_url": reverse("audio-editor-preview", kwargs={"job_id": job.id, "track_id": track.get("input_id")}),
+            "peaks_url": f"{settings.MEDIA_URL}{track.get('peaks', '')}",
+        }
+        for track in raw_tracks
+    ]
+    return render(request, "studio/audio_editor.html", {
+        "job": job,
+        "tool": TOOL_PROTOTYPES[MediaToolJob.KIND_EDIT_AUDIO],
+        "preview_url": f"{settings.MEDIA_URL}{manifest.get('preview', '')}" if manifest.get("preview") else "",
+        "peaks_url": f"{settings.MEDIA_URL}{manifest.get('peaks', '')}" if manifest.get("peaks") else "",
+        "output_url": f"{settings.MEDIA_URL}{job.result_file}" if manifest.get("stage") == "result" and job.result_file else "",
+        "source_name": tracks[0].get("name", "") if tracks else "",
+        "audio_tracks": tracks,
+        "audio_editor_state": job.options.get("editor_draft_state", {}),
+        "can_undo_audio_addition": bool(job.options.get("editor_addition_history")),
+    })
+
+
+def _limited_file_chunks(path, start, length, chunk_size=64 * 1024):
+    with path.open("rb") as stream:
+        stream.seek(start)
+        remaining = length
+        while remaining > 0:
+            chunk = stream.read(min(chunk_size, remaining))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+            yield chunk
+
+
+@require_GET
+def audio_editor_preview(request, job_id, track_id):
+    job = _media_tool_job_for_request(request, job_id)
+    if job.kind != MediaToolJob.KIND_EDIT_AUDIO:
+        raise Http404
+    track = next((item for item in (job.result_manifest or {}).get("tracks", []) if int(item.get("input_id", 0)) == track_id), None)
+    if not track or not track.get("preview"):
+        raise Http404
+    media_root = Path(settings.MEDIA_ROOT).resolve()
+    job_root = (media_root / "tools" / "jobs" / str(job.id)).resolve()
+    preview_path = (media_root / track["preview"]).resolve()
+    if not preview_path.is_file() or job_root not in preview_path.parents:
+        raise Http404
+    size = preview_path.stat().st_size
+    content_type = mimetypes.guess_type(preview_path.name)[0] or "application/octet-stream"
+    range_header = request.headers.get("Range", "")
+    match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header.strip())
+    if not match:
+        response = FileResponse(preview_path.open("rb"), content_type=content_type)
+        response["Content-Length"] = str(size)
+        response["Accept-Ranges"] = "bytes"
+        return response
+    first, last = match.groups()
+    if first:
+        start = int(first)
+        end = min(int(last), size - 1) if last else size - 1
+    elif last:
+        length = min(int(last), size)
+        start, end = size - length, size - 1
+    else:
+        start, end = 0, size - 1
+    if start >= size or end < start:
+        response = HttpResponse(status=416)
+        response["Content-Range"] = f"bytes */{size}"
+        return response
+    length = end - start + 1
+    response = StreamingHttpResponse(
+        _limited_file_chunks(preview_path, start, length),
+        status=206,
+        content_type=content_type,
+    )
+    response["Content-Length"] = str(length)
+    response["Content-Range"] = f"bytes {start}-{end}/{size}"
+    response["Accept-Ranges"] = "bytes"
+    return response
+
+
+@require_POST
+def audio_editor_debug(request, job_id):
+    if not settings.DEBUG:
+        raise Http404
+    job = _media_tool_job_for_request(request, job_id)
+    if job.kind != MediaToolJob.KIND_EDIT_AUDIO:
+        raise Http404
+    try:
+        payload = json.loads(request.body or b"{}")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({"error": "invalid debug payload"}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({"error": "invalid debug payload"}, status=400)
+    debug_dir = Path(settings.MEDIA_ROOT) / "debug"
+    debug_dir.mkdir(parents=True, exist_ok=True)
+    debug_path = debug_dir / f"audio-editor-{job.id}.jsonl"
+    if payload.pop("clear", False):
+        debug_path.write_text("", encoding="utf-8")
+    record = {
+        "server_time": timezone.now().isoformat(),
+        **payload,
+    }
+    with debug_path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+    if debug_path.stat().st_size > 1024 * 1024:
+        lines = debug_path.read_text(encoding="utf-8").splitlines()[-1000:]
+        debug_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return JsonResponse({"ok": True})
+
+
+@require_POST
+def add_audio_editor_track(request, job_id):
+    job = _media_tool_job_for_request(request, job_id)
+    if job.kind != MediaToolJob.KIND_EDIT_AUDIO:
+        raise Http404
+    if job.processing_status != "complete" or (job.result_manifest or {}).get("stage") != "editing":
+        return JsonResponse({"error": _("The audio editor is not ready yet.")}, status=409)
+    upload = request.FILES.get("audio")
+    if not upload:
+        return JsonResponse({"error": _("Choose an audio file.")}, status=400)
+    if Path(upload.name).suffix.lower() not in ALLOWED_AUDIO:
+        return JsonResponse({
+            "error": _("Unsupported audio format. Allowed formats: %(formats)s.") % {"formats": ".mp3, .wav, .webm, .ogg, .m4a, .aac, .flac, .mp4, .mkv"},
+        }, status=400)
+    existing_ids = list(job.inputs.filter(role="audio").order_by("position", "id").values_list("id", flat=True))
+    current_duration = sum(float(item.get("duration", 0)) for item in (job.result_manifest or {}).get("tracks", []))
+    try:
+        raw_state = json.loads(request.POST.get("editor_state", "{}"))
+        editor_state = _normalize_audio_editor_state(raw_state, existing_ids, current_duration)
+    except (TypeError, ValueError, json.JSONDecodeError, ProcessingError) as error:
+        return JsonResponse({"error": str(error) or _("The editor data is invalid.")}, status=400)
+    last = job.inputs.filter(role="audio").order_by("-position").first()
+    state_before_addition = json.loads(json.dumps(editor_state))
+    item = MediaToolInput.objects.create(
+        job=job, role="audio", position=(last.position + 1 if last else 0), media_file=upload,
+    )
+    current_ids = list(job.inputs.filter(role="audio").order_by("position", "id").values_list("id", flat=True))
+    current_id_set = set(current_ids)
+    order = [value for value in editor_state["trackOrder"] if value in current_id_set and value != item.id]
+    order.extend(value for value in current_ids if value not in order and value != item.id)
+    order.append(item.id)
+    editor_state["trackOrder"] = order
+    groups = editor_state["trackGroups"]
+    groups.append([item.id])
+    editor_state["trackGroups"] = groups
+    editor_state["mergeApplied"] = False
+    job.options = {
+        **job.options,
+        "phase": "prepare",
+        "editor_track_order": order,
+        "editor_draft_state": editor_state,
+        "editor_addition_history": [
+            *job.options.get("editor_addition_history", []),
+            {"track_id": item.id, "state_before": state_before_addition},
+        ],
+    }
+    job.processing_status = "pending"
+    job.processing_step = "pending"
+    job.processing_error = ""
+    job.save(update_fields=["options", "processing_status", "processing_step", "processing_error"])
+    try:
+        start_media_tool_worker(job)
+    except Exception as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    return JsonResponse({
+        "ok": True,
+        "status_url": reverse("media-tool-status", kwargs={"job_id": job.id}),
+        "result_url": reverse("audio-editor-job", kwargs={"job_id": job.id}),
+    })
+
+
+@require_POST
+def remove_audio_editor_track(request, job_id):
+    job = _media_tool_job_for_request(request, job_id)
+    if job.kind != MediaToolJob.KIND_EDIT_AUDIO:
+        raise Http404
+    if job.processing_status != "complete" or (job.result_manifest or {}).get("stage") != "editing":
+        return JsonResponse({"error": _("The audio editor is not ready yet.")}, status=409)
+    inputs = list(job.inputs.filter(role="audio").order_by("position", "id"))
+    if len(inputs) <= 1:
+        return JsonResponse({"error": _("The only audio file cannot be removed.")}, status=400)
+    try:
+        payload = json.loads(request.body or b"{}")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({"error": _("The editor data is invalid.")}, status=400)
+    history = list(job.options.get("editor_addition_history", []))
+    if payload.get("undo_addition"):
+        if not history:
+            return JsonResponse({"error": _("There is no added audio to undo.")}, status=400)
+        history_item = history.pop()
+        track_id = int(history_item.get("track_id", 0))
+        raw_state = history_item.get("state_before", {})
+    else:
+        try:
+            track_id = int(payload["track_id"])
+        except (KeyError, TypeError, ValueError):
+            return JsonResponse({"error": _("Choose an audio file to remove.")}, status=400)
+        raw_state = payload.get("editor_state", {})
+        # A manually removed track may also be referenced by older snapshots.
+        # Clearing those snapshots is safer than restoring an impossible order.
+        history = []
+    item = next((value for value in inputs if value.id == track_id), None)
+    if not item:
+        return JsonResponse({"error": _("The audio file could not be found.")}, status=404)
+    remaining_ids = [value.id for value in inputs if value.id != track_id]
+    track_manifest = (job.result_manifest or {}).get("tracks", [])
+    remaining_tracks = [value for value in track_manifest if int(value.get("input_id", 0)) != track_id]
+    remaining_duration = sum(float(value.get("duration", 0) or 0) for value in remaining_tracks)
+    try:
+        editor_state = _normalize_audio_editor_state(raw_state, remaining_ids, remaining_duration)
+    except (TypeError, ValueError, ProcessingError) as error:
+        return JsonResponse({"error": str(error) or _("The editor data is invalid.")}, status=400)
+    media_root = Path(settings.MEDIA_ROOT).resolve()
+    job_root = (media_root / "tools" / "jobs" / str(job.id)).resolve()
+    removed_track = next((value for value in track_manifest if int(value.get("input_id", 0)) == track_id), {})
+    for field in ("preview", "peaks"):
+        candidate = (media_root / removed_track.get(field, "")).resolve() if removed_track.get(field) else None
+        if candidate and candidate.is_file() and job_root in candidate.parents:
+            candidate.unlink(missing_ok=True)
+    item.media_file.delete(save=False)
+    item.delete()
+    job.result_manifest = {**(job.result_manifest or {}), "tracks": remaining_tracks}
+    job.options = {
+        **job.options,
+        "phase": "prepare",
+        "editor_track_order": editor_state["trackOrder"],
+        "editor_draft_state": editor_state,
+        "editor_addition_history": history,
+    }
+    job.processing_status = "pending"
+    job.processing_step = "pending"
+    job.processing_error = ""
+    job.save(update_fields=["result_manifest", "options", "processing_status", "processing_step", "processing_error"])
+    try:
+        start_media_tool_worker(job)
+    except Exception as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    return JsonResponse({
+        "ok": True,
+        "status_url": reverse("media-tool-status", kwargs={"job_id": job.id}),
+        "result_url": reverse("audio-editor-job", kwargs={"job_id": job.id}),
+    })
+
+
+def _normalize_audio_editor_state(raw_state, input_ids, duration):
+    if not isinstance(raw_state, dict):
+        raise ProcessingError(_("The editor data is invalid."))
+    raw_operations = raw_state.get("operations", [])
+    if not isinstance(raw_operations, list) or len(raw_operations) > 500:
+        raise ProcessingError(_("The editor data is invalid."))
+    operations = []
+    for raw in raw_operations:
+        if not isinstance(raw, dict) or raw.get("type") not in {"cut", "speed", "silence"}:
+            raise ProcessingError(_("The editor data is invalid."))
+        try:
+            start, end = float(raw["start"]), float(raw["end"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise ProcessingError(_("The editor data is invalid.")) from error
+        source_length = end - start
+        inserted_silence = raw["type"] == "silence" and abs(source_length) < .001
+        if (
+            not math.isfinite(start)
+            or not math.isfinite(end)
+            or start < 0
+            or end > duration + .01
+            or source_length < -.001
+            or (source_length < .001 and not inserted_silence)
+        ):
+            raise ProcessingError(_("The editor data is invalid."))
+        operation = {"type": raw["type"], "start": start, "end": min(end, duration)}
+        if operation["type"] == "speed":
+            try:
+                speed = float(raw["speed"])
+            except (KeyError, TypeError, ValueError) as error:
+                raise ProcessingError(_("The editor data is invalid.")) from error
+            if not math.isfinite(speed) or not MIN_AUDIO_EDIT_SPEED <= speed <= MAX_AUDIO_EDIT_SPEED:
+                raise ProcessingError(_("The editor data is invalid."))
+            operation["speed"] = speed
+        elif operation["type"] == "silence":
+            try:
+                silence_duration = float(raw["duration"])
+            except (KeyError, TypeError, ValueError) as error:
+                raise ProcessingError(_("The editor data is invalid.")) from error
+            if not math.isfinite(silence_duration) or silence_duration <= 0:
+                raise ProcessingError(_("The editor data is invalid."))
+            operation["duration"] = silence_duration
+        operations.append(operation)
+    try:
+        order = [int(value) for value in raw_state.get("trackOrder", input_ids)]
+    except (TypeError, ValueError):
+        raise ProcessingError(_("The editor data is invalid."))
+    if len(order) != len(input_ids) or len(set(order)) != len(order) or set(order) != set(input_ids):
+        raise ProcessingError(_("The editor data is invalid."))
+    raw_groups = raw_state.get("trackGroups")
+    if raw_groups is None:
+        groups = [order] if raw_state.get("mergeApplied") and len(order) > 1 else [[value] for value in order]
+    else:
+        if not isinstance(raw_groups, list) or not all(isinstance(group, list) and group for group in raw_groups):
+            raise ProcessingError(_("The editor data is invalid."))
+        try:
+            groups = [[int(value) for value in group] for group in raw_groups]
+        except (TypeError, ValueError) as error:
+            raise ProcessingError(_("The editor data is invalid.")) from error
+        flattened_groups = [value for group in groups for value in group]
+        if flattened_groups != order or len(set(flattened_groups)) != len(flattened_groups):
+            raise ProcessingError(_("The editor data is invalid."))
+
+    def optional_number(name):
+        value = raw_state.get(name)
+        if value is None:
+            return None
+        value = float(value)
+        if not math.isfinite(value) or value < 0:
+            raise ProcessingError(_("The editor data is invalid."))
+        return value
+
+    return {
+        "operations": operations,
+        "trackOrder": order,
+        "trackGroups": groups,
+        "mergeApplied": bool(raw_state.get("mergeApplied", len(input_ids) <= 1)),
+        "cursor": optional_number("cursor"),
+        "selectionStart": optional_number("selectionStart"),
+        "selectionEnd": optional_number("selectionEnd"),
+        "targetDuration": optional_number("targetDuration"),
+        "selectionRate": optional_number("selectionRate") or 1,
+        "trailingSilence": optional_number("trailingSilence") or 0,
+    }
+
+
+@require_POST
+def save_audio_editor_draft(request, job_id):
+    job = _media_tool_job_for_request(request, job_id)
+    if job.kind != MediaToolJob.KIND_EDIT_AUDIO:
+        raise Http404
+    if job.processing_status != "complete" or (job.result_manifest or {}).get("stage") != "editing":
+        return JsonResponse({"error": _("The audio editor is not ready yet.")}, status=409)
+    try:
+        raw_state = json.loads(request.body or b"{}")
+        input_ids = list(job.inputs.filter(role="audio").order_by("position", "id").values_list("id", flat=True))
+        duration = sum(float(item.get("duration", 0) or 0) for item in (job.result_manifest or {}).get("tracks", []))
+        editor_state = _normalize_audio_editor_state(raw_state, input_ids, duration)
+    except (TypeError, ValueError, json.JSONDecodeError, ProcessingError) as error:
+        return JsonResponse({"error": str(error) or _("The editor data is invalid.")}, status=400)
+    job.options = {
+        **job.options,
+        "editor_track_order": editor_state["trackOrder"],
+        "editor_draft_state": editor_state,
+    }
+    job.save(update_fields=["options"])
+    return JsonResponse({"ok": True})
+
+
+@require_POST
+def save_audio_editor(request, job_id):
+    job = _media_tool_job_for_request(request, job_id)
+    if job.kind != MediaToolJob.KIND_EDIT_AUDIO:
+        raise Http404
+    try:
+        payload = json.loads(request.body or b"{}")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({"error": _("The editor data is invalid.")}, status=400)
+    operations = payload.get("operations")
+    try:
+        trailing_silence = float(payload.get("trailing_silence", 0) or 0)
+    except (TypeError, ValueError):
+        return JsonResponse({"error": _("The editor data is invalid.")}, status=400)
+    output_format = payload.get("output_format", job.options.get("output_format", "mp3"))
+    mp3_bitrate = normalize_mp3_bitrate(
+        payload.get("mp3_bitrate", job.options.get("mp3_bitrate"))
+    )
+    if not isinstance(operations, list) or len(operations) > 500 or not math.isfinite(trailing_silence) or trailing_silence < 0:
+        return JsonResponse({"error": _("The editor data is invalid.")}, status=400)
+    if output_format not in {"mp3", "wav"}:
+        return JsonResponse({"error": _("Choose MP3 or WAV output." )}, status=400)
+    manifest = job.result_manifest or {}
+    if not manifest.get("editor_ready"):
+        return JsonResponse({"error": _("The audio editor is not ready yet.")}, status=409)
+    input_ids = list(job.inputs.filter(role="audio").values_list("id", flat=True))
+    track_order = payload.get("track_order", input_ids)
+    try:
+        track_order = [int(value) for value in track_order]
+    except (TypeError, ValueError):
+        return JsonResponse({"error": _("The editor data is invalid.")}, status=400)
+    if len(track_order) != len(input_ids) or len(set(track_order)) != len(track_order) or set(track_order) != set(input_ids):
+        return JsonResponse({"error": _("The editor data is invalid.")}, status=400)
+    job.options = {
+        **job.options, "phase": "render", "operations": operations,
+        "output_format": output_format, "mp3_bitrate": mp3_bitrate,
+        "editor_track_order": track_order,
+        "trailing_silence": trailing_silence,
+    }
+    job.processing_status = "pending"
+    job.processing_step = "pending"
+    job.processing_error = ""
+    job.result_file = ""
+    job.save(update_fields=["options", "processing_status", "processing_step", "processing_error", "result_file"])
+    try:
+        start_media_tool_worker(job)
+    except Exception as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    return JsonResponse({
+        "ok": True,
+        "status_url": reverse("media-tool-status", kwargs={"job_id": job.id}),
+        "result_url": reverse("audio-editor-job", kwargs={"job_id": job.id}),
+    })
+
+
+@require_POST
+def continue_audio_editor(request, job_id):
+    job = _media_tool_job_for_request(request, job_id)
+    manifest = job.result_manifest or {}
+    if job.kind != MediaToolJob.KIND_EDIT_AUDIO:
+        raise Http404
+    if job.processing_status != "complete" or manifest.get("stage") != "result" or not job.result_file:
+        return JsonResponse({"error": _("The edited audio is not ready yet.")}, status=409)
+
+    media_root = Path(settings.MEDIA_ROOT).resolve()
+    job_root = (media_root / "tools" / "jobs" / str(job.id)).resolve()
+    result_path = (media_root / job.result_file).resolve()
+    if not result_path.is_file() or job_root not in result_path.parents:
+        return JsonResponse({"error": _("The edited audio file could not be found.")}, status=404)
+
+    committed_dir = job_root / "committed"
+    committed_dir.mkdir(parents=True, exist_ok=True)
+    committed_path = committed_dir / f"{uuid.uuid4().hex}{result_path.suffix.lower()}"
+    shutil.copy2(result_path, committed_path)
+    old_inputs = list(job.inputs.all())
+    new_input = MediaToolInput.objects.create(
+        job=job,
+        role="audio",
+        position=0,
+        media_file=committed_path.relative_to(media_root).as_posix(),
+    )
+    for item in old_inputs:
+        item.media_file.delete(save=False)
+        item.delete()
+    shutil.rmtree(job_root / "input", ignore_errors=True)
+    shutil.rmtree(job_root / "output", ignore_errors=True)
+
+    output_format = manifest.get("output_format") or job.options.get("output_format", "mp3")
+    mp3_bitrate = normalize_mp3_bitrate(
+        manifest.get("mp3_bitrate") or job.options.get("mp3_bitrate")
+    )
+    job.options = {
+        "output_format": output_format,
+        "mp3_bitrate": mp3_bitrate,
+        "phase": "prepare",
+        "editor_track_order": [new_input.id],
+    }
+    job.processing_status = "pending"
+    job.processing_step = "pending"
+    job.processing_error = ""
+    job.result_file = ""
+    job.result_manifest = {}
+    job.finished_at = None
+    job.save(update_fields=[
+        "options", "processing_status", "processing_step", "processing_error",
+        "result_file", "result_manifest", "finished_at",
+    ])
+    try:
+        start_media_tool_worker(job)
+    except Exception as error:
+        job.processing_status = "failed"
+        job.processing_error = str(error)
+        job.save(update_fields=["processing_status", "processing_error"])
+    return redirect("audio-editor-job", job_id=job.id)
 
 
 @login_required
@@ -852,6 +1461,11 @@ def project_summary(request, project_id):
             format(player_duration, ".6f").rstrip("0").rstrip(".")
             if player_duration is not None else None
         )
+        player_url = reverse("segment-editor-audio", kwargs={"project_id": project.id})
+        segment.player_url = (
+            f"{player_url}?segment={segment.position}&v={segment.audio_version}"
+        )
+        segment.player_download_url = segment.player_url
     diagnostics = diagnose_segments(
         segments,
         DiagnosticOptions(speed_warning=project.speed_warning_threshold),

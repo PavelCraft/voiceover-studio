@@ -1,0 +1,46 @@
+{% load i18n %}
+<div
+  id="segment-editor"
+  class="segment-editor"
+  hidden
+  data-loading-text="{% trans 'Loading audio editor…' %}"
+  data-processing-text="{% trans 'Saving' %}"
+  data-processing-wait="{% trans 'Please wait' %}"
+  data-apply-first="{% trans 'Apply the selected boundary before saving.' %}"
+  data-invalid-range="{% trans 'The beginning must be earlier than the end.' %}"
+  data-save-error="{% trans 'The changes could not be saved.' %}"
+  data-skip-confirm="{% trans 'Mark this phrase as absent from the recording and realign all following phrases?' %}"
+>
+  <div class="segment-editor-shade" aria-hidden="true"></div>
+  <section class="segment-editor-panel" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+    <header class="editor-header">
+      <div><p class="step">{% trans "Manual boundary editor" %}</p><h2 id="editor-title"></h2></div>
+      <button class="icon-button" id="editor-close" type="button" aria-label="{% trans 'Exit without saving' %}">×</button>
+    </header>
+    <div class="editor-phrase-sequence">
+      <section class="editor-phrase-card editor-neighbor-phrase"><strong>{% trans "Previous phrase" %}</strong><p id="editor-previous"></p></section>
+      <section class="editor-phrase-card editor-current-phrase"><strong>{% trans "Current phrase" %}</strong><p id="editor-phrase"></p></section>
+      <section class="editor-phrase-card editor-neighbor-phrase"><strong>{% trans "Next phrase" %}</strong><p id="editor-next"></p></section>
+    </div>
+    <div class="waveform-shell" id="waveform-shell">
+      <canvas id="waveform-canvas"></canvas><div class="waveform-cursor" aria-hidden="true"></div>
+      <div class="waveform-loading" id="waveform-loading">{% trans "Loading audio editor…" %}</div>
+    </div>
+    <div class="time-row"><label for="editor-time">{% trans "Cursor position" %}</label><input id="editor-time" class="time-input" type="text" inputmode="decimal" value="00:00.000"><span id="editor-selection-duration" class="muted"></span></div>
+    <div class="editor-toolbar" aria-label="{% trans 'Playback and navigation' %}">
+      <button class="icon-button" id="editor-play" type="button" aria-label="{% trans 'Play' %}">▶</button>
+      <button class="icon-button" id="editor-mute" type="button" aria-label="{% trans 'Mute' %}">🔊</button>
+      <input id="editor-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="{% trans 'Volume' %}"><span class="toolbar-spacer"></span>
+      <button class="small-button" type="button" data-nudge="-1">−1 s</button><button class="small-button" type="button" data-nudge="-0.01">−0.01 s</button><button class="small-button" type="button" data-nudge="0.01">+0.01 s</button><button class="small-button" type="button" data-nudge="1">+1 s</button>
+      <button class="small-button" id="editor-zoom-out" type="button" aria-label="{% trans 'Zoom out' %}">−</button><button class="small-button" id="editor-zoom-in" type="button" aria-label="{% trans 'Zoom in' %}">+</button>
+    </div>
+    <div class="editor-actions boundary-actions">
+      <button class="button secondary" id="editor-set-start" type="button">{% trans "Set beginning" %}</button><button class="button secondary" id="editor-set-end" type="button">{% trans "Set end" %}</button><button class="button primary" id="editor-apply" type="button">{% trans "Apply" %}</button><button class="icon-button" id="editor-undo" type="button" aria-label="{% trans 'Undo' %}">↶</button><button class="icon-button" id="editor-redo" type="button" aria-label="{% trans 'Redo' %}">↷</button>
+    </div>
+    <p id="editor-message" class="editor-message" role="status"></p>
+    <footer class="editor-footer">
+      <button class="button danger-button" id="editor-skip" type="button"{% if not segment_editor_allow_skip %} hidden{% endif %}>{% trans "Phrase is absent — skip" %}</button><span class="toolbar-spacer"></span><button class="button secondary" id="editor-cancel" type="button">{% trans "Exit without saving" %}</button><button class="button primary" id="editor-save" type="button">{% trans "Save and exit" %}</button>
+    </footer>
+    <audio id="editor-audio" preload="metadata"></audio>
+  </section>
+</div>

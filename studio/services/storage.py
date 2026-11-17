@@ -96,3 +96,34 @@ def estimate_voiceover_processing(project, render=False) -> int:
 
 def estimate_from_fields(*fields, multiplier=2, minimum=64 * 1024**2) -> int:
     return max(minimum, sum(file_size(field) for field in fields) * multiplier)
+
+
+def estimate_media_tool_processing(job) -> int:
+    base = estimate_from_fields(*(item.media_file for item in job.inputs.all()))
+    if job.kind != "edit_audio" or job.options.get("phase") != "render":
+        return base
+    tracks = (job.result_manifest or {}).get("tracks", [])
+    duration = sum(float(item.get("duration", 0) or 0) for item in tracks)
+    for operation in job.options.get("operations", []):
+        try:
+            source_duration = float(operation["end"]) - float(operation["start"])
+            if operation.get("type") == "cut":
+                duration -= source_duration
+            elif operation.get("type") == "speed":
+                duration += source_duration / float(operation["speed"]) - source_duration
+            elif operation.get("type") == "silence":
+                duration += float(operation["duration"]) - source_duration
+        except (KeyError, TypeError, ValueError, ZeroDivisionError):
+            return base
+    try:
+        duration += float(job.options.get("trailing_silence", 0) or 0)
+    except (TypeError, ValueError):
+        return base
+    output_format = job.options.get("output_format", "mp3")
+    if output_format == "wav":
+        output_bytes = max(0, duration) * 44_100 * 2 * 3
+    else:
+        bitrate = int(job.options.get("mp3_bitrate", 192) or 192)
+        output_bytes = max(0, duration) * bitrate * 1000 / 8
+    temporary_bytes = duration * 44_100 * 2 * 2 if job.inputs.count() > 1 else 0
+    return max(base, int((output_bytes + temporary_bytes) * 1.1))

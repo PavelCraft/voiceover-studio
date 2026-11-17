@@ -293,6 +293,112 @@ def transcribe(audio_path, output_path, language=None, prompt=None):
     return payload
 
 
+TRANSCRIPTION_CHUNK_SECONDS = 300.0
+TRANSCRIPTION_CHUNK_OVERLAP = 5.0
+TRANSCRIPTION_DIRECT_UPLOAD_BYTES = 23 * 1024 * 1024
+
+
+def _transcription_words_text(words):
+    raw = [str(item.get("word", "")) for item in words if str(item.get("word", "")).strip()]
+    text = ""
+    for value in raw:
+        stripped = value.strip()
+        if not text:
+            text = stripped
+        elif value[:1].isspace() or re.match(r"^[,.;:!?…]", stripped):
+            text += value if value[:1].isspace() else stripped
+        else:
+            text += f" {stripped}"
+    return re.sub(r"\s+([,.;:!?…])", r"\1", text).strip()
+
+
+def merge_overlapping_transcriptions(parts, starts, duration, chunk_seconds=TRANSCRIPTION_CHUNK_SECONDS,
+                                     overlap=TRANSCRIPTION_CHUNK_OVERLAP):
+    """Join overlapping Groq results without duplicated words at chunk boundaries."""
+    combined = {"text": "", "words": [], "segments": [], "duration": float(duration), "language": ""}
+    for index, (part, offset) in enumerate(zip(parts, starts)):
+        lower = 0.0 if index == 0 else offset + overlap / 2
+        upper = float(duration) if index == len(parts) - 1 else starts[index + 1] + overlap / 2
+        selected = []
+        for source in part.get("words") or []:
+            local_start, local_end = float(source["start"]), float(source["end"])
+            midpoint = offset + (local_start + local_end) / 2
+            if lower <= midpoint < upper:
+                item = dict(source)
+                item["start"], item["end"] = local_start + offset, local_end + offset
+                selected.append((source, item))
+                combined["words"].append(item)
+        assigned = set()
+        for source_segment in part.get("segments") or []:
+            segment_start = float(source_segment.get("start", 0))
+            segment_end = float(source_segment.get("end", segment_start))
+            segment_words = []
+            for word_index, (local_word, global_word) in enumerate(selected):
+                local_midpoint = (float(local_word["start"]) + float(local_word["end"])) / 2
+                if word_index not in assigned and segment_start - .001 <= local_midpoint <= segment_end + .001:
+                    assigned.add(word_index)
+                    segment_words.append(global_word)
+            if not segment_words:
+                continue
+            segment = dict(source_segment)
+            segment["start"], segment["end"] = segment_words[0]["start"], segment_words[-1]["end"]
+            segment["text"] = _transcription_words_text(segment_words)
+            combined["segments"].append(segment)
+        unassigned = [global_word for word_index, (_, global_word) in enumerate(selected) if word_index not in assigned]
+        if unassigned:
+            combined["segments"].append({
+                "start": unassigned[0]["start"], "end": unassigned[-1]["end"],
+                "text": _transcription_words_text(unassigned),
+            })
+        if not combined["language"]:
+            combined["language"] = part.get("language", "")
+    combined["words"].sort(key=lambda item: (float(item["start"]), float(item["end"])))
+    combined["segments"].sort(key=lambda item: (float(item.get("start", 0)), float(item.get("end", 0))))
+    combined["text"] = _transcription_words_text(combined["words"])
+    validate_word_timestamps(combined["words"])
+    return combined
+
+
+def transcribe_long_audio(audio_path, output_path, language=None, prompt=None, progress=None,
+                          chunk_seconds=TRANSCRIPTION_CHUNK_SECONDS, overlap=TRANSCRIPTION_CHUNK_OVERLAP):
+    """Transcribe safely sized overlapping chunks and restore one global timeline."""
+    audio_path, output_path = Path(audio_path), Path(output_path)
+    duration = probe_duration(audio_path)
+    if duration <= chunk_seconds and audio_path.stat().st_size <= TRANSCRIPTION_DIRECT_UPLOAD_BYTES:
+        return transcribe(audio_path, output_path, language=language, prompt=prompt)
+    if overlap <= 0 or overlap >= chunk_seconds:
+        raise ProcessingError("Invalid transcription chunk overlap")
+    step = chunk_seconds - overlap
+    starts = [0.0]
+    while starts[-1] + chunk_seconds < duration - .001:
+        starts.append(starts[-1] + step)
+    chunks_dir = output_path.parent / f"{output_path.stem}-chunks"
+    shutil.rmtree(chunks_dir, ignore_errors=True)
+    chunks_dir.mkdir(parents=True, exist_ok=True)
+    parts = []
+    try:
+        for index, start in enumerate(starts, 1):
+            length = min(chunk_seconds, duration - start)
+            chunk = chunks_dir / f"{index:03d}.flac"
+            run([
+                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                "-ss", f"{start:.6f}", "-t", f"{length:.6f}", "-i", str(audio_path),
+                "-vn", "-ar", "16000", "-ac", "1", "-c:a", "flac", str(chunk),
+            ])
+            if chunk.stat().st_size > TRANSCRIPTION_DIRECT_UPLOAD_BYTES:
+                raise ProcessingError("Prepared transcription chunk exceeds the Groq upload limit")
+            if progress:
+                progress(index, len(starts))
+            parts.append(transcribe(
+                chunk, chunks_dir / f"{index:03d}.json", language=language, prompt=prompt,
+            ))
+        combined = merge_overlapping_transcriptions(parts, starts, duration, chunk_seconds, overlap)
+        output_path.write_text(json.dumps(combined, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return combined
+    finally:
+        shutil.rmtree(chunks_dir, ignore_errors=True)
+
+
 def _match_score(target, asr_tokens, start, end):
     return SequenceMatcher(
         None,
@@ -765,7 +871,10 @@ def process_project(
                  "-vn", "-ar", "16000", "-ac", "1", "-c:a", "flac", str(groq_audio)])
             ensure_editor_assets(project, source_wav)
             update_progress(project, "transcribing")
-            words = transcribe(groq_audio, transcription_path)["words"]
+            words = transcribe_long_audio(
+                groq_audio, transcription_path,
+                progress=lambda index, total: update_progress(project, f"transcribing {index}/{total}"),
+            )["words"]
             groq_audio.unlink(missing_ok=True)
         video_duration = probe_duration(project.video_file.path)
         timecodes_text = project.timecodes_text.strip()

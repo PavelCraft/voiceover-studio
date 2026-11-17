@@ -1,0 +1,30 @@
+{% extends "studio/base.html" %}
+{% load i18n static %}
+{% block title %}{{ tool.title }} — Voiceover Studio{% endblock %}
+{% block topbar_title %}{{ tool.title }}{% endblock %}
+{% block navigation %}<nav class="workflow-nav"><a href="{% url 'tool-prototype' tool_slug=job.kind %}">← {% trans "New operation" %}</a><a href="{% url 'tools-index' %}">{% trans "All tools" %}</a></nav>{% endblock %}
+{% block content %}
+<section class="card work-card result-card split-phrases-result" id="tool-job" data-status-url="{% url 'media-tool-status' job_id=job.id %}">
+  <p class="eyebrow"><span></span>{% trans "Phrase cutting" %}</p><h1>{{ tool.title }}</h1>
+  {% if job.processing_status == 'complete' %}
+    <div class="split-result-heading"><div><h2>{% trans "Check the phrase boundaries" %}</h2><p>{% trans "Listen to each phrase and adjust its beginning or end if necessary." %}</p></div><a class="button primary" href="{{ output_url }}" download>{% trans "Download all phrases as ZIP" %}</a></div>
+    <div class="segments split-phrase-segments">
+      {% for segment in segments %}
+        <article id="segment-{{ segment.position }}" class="segment{% if segment.status == 'not_found' or segment.status == 'low_confidence' %} segment-warning{% endif %}">
+          <div class="segment-heading"><strong>{% blocktrans with number=segment.position %}Phrase {{ number }}{% endblocktrans %}</strong><span>{% trans "Match" %}: {% if segment.score != None %}{{ segment.score|floatformat:2 }}{% else %}—{% endif %}</span>{% if segment.manual %}<span>{% trans "Manually adjusted" %}</span>{% endif %}</div>
+          <p class="segment-text">{{ segment.text }}</p>
+          {% if segment.file %}
+            {% include "studio/partials/segment_player.html" with player_url=segment.player_url player_download_url=segment.player_download_url player_duration=segment.duration only %}
+          {% else %}<p class="error-box">{% trans "Phrase not found in the recording" %}</p>{% endif %}
+          <div class="segment-actions"><button class="button secondary segment-edit-button" type="button" data-editor-url="{% url 'split-phrase-editor' job_id=job.id position=segment.position %}">{% trans "Edit boundaries manually" %}</button>{% if segment.file %}<a class="button secondary" href="{% url 'split-phrase-audio' job_id=job.id position=segment.position %}?download=1" download>{% trans "Download phrase" %}</a>{% endif %}</div>
+        </article>
+      {% endfor %}
+    </div>
+  {% elif job.processing_status == 'failed' %}<p class="errorlist">{{ job.processing_error }}</p><a class="button secondary" href="{% url 'tool-prototype' tool_slug=job.kind %}">{% trans "Try again" %}</a>
+  {% else %}<div class="processing-progress"><i></i><strong>{% trans "Recognizing and cutting the recording…" %}</strong><span id="job-step">{{ job.processing_step }}</span></div><p>{% trans "This page will update automatically." %}</p>{% endif %}
+</section>
+{% if job.processing_status == 'complete' %}
+  {% include "studio/partials/segment_boundary_editor.html" with segment_editor_allow_skip=False %}
+  <script src="{% static 'studio/segment_editor.js' %}?v=20261112-1"></script><script src="{% static 'studio/segment_players.js' %}?v=20261112-3"></script>
+{% else %}<script>const box=document.getElementById('tool-job');if(box&&!['complete','failed'].includes('{{ job.processing_status }}')){const poll=()=>fetch(box.dataset.statusUrl).then(r=>r.json()).then(data=>{if(data.complete||data.failed)location.reload();else{document.getElementById('job-step').textContent=data.step;setTimeout(poll,1200)}}).catch(()=>setTimeout(poll,2500));poll()}</script>{% endif %}
+{% endblock %}

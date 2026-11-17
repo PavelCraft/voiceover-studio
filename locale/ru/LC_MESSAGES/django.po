@@ -3812,5 +3812,292 @@ msgstr ""
 #~ msgid "Continue to voiceover"
 #~ msgstr "Продолжить к озвучке"
 
+msgid "Edit audio"
+msgstr "Редактировать аудио"
+
+msgid "Audio file"
+msgstr "Аудиофайл"
+
+msgid "MP3 — compact"
+msgstr "MP3 — компактный"
+
+msgid "Cut unwanted parts and change the speed of selected fragments on a waveform."
+msgstr "Удаляйте ненужные участки и меняйте скорость выбранных фрагментов на осциллограмме."
+
+msgid "Cut unwanted parts and speed up or slow down selected fragments directly on the waveform."
+msgstr "Удаляйте ненужные участки, ускоряйте или замедляйте выбранные фрагменты прямо на осциллограмме."
+
+msgid "Open audio editor"
+msgstr "Открыть аудиоредактор"
+
+msgid "Cut fragments"
+msgstr "Удаление фрагментов"
+
+msgid "Change speed"
+msgstr "Изменение скорости"
+
+msgid "Waveform"
+msgstr "Осциллограмма"
+
+msgid "New audio file"
+msgstr "Новый аудиофайл"
+
+msgid "Waveform editor"
+msgstr "Редактор осциллограммы"
+
+msgid "Mark a fragment, remove it or change its duration by dragging the right handle."
+msgstr "Выделите фрагмент, удалите его или измените длительность, перетаскивая правую границу."
+
+msgid "Try another file"
+msgstr "Выбрать другой файл"
+
+msgid "Preparing audio editor…"
+msgstr "Подготавливаем аудиоредактор…"
+
+msgid "The waveform or edited file is being prepared. This page will update automatically."
+msgstr "Подготавливается осциллограмма или изменённый файл. Страница обновится автоматически."
+
+msgid "Edited file is ready"
+msgstr "Изменённый файл готов"
+
+msgid "Listen before downloading"
+msgstr "Прослушайте результат перед скачиванием"
+
+#, python-format
+msgid "Result duration: %(duration)s seconds"
+msgstr "Длительность результата: %(duration)s с"
+
+msgid "Download edited audio"
+msgstr "Скачать изменённое аудио"
+
+msgid "Edit another file"
+msgstr "Редактировать другой файл"
+
+msgid "Removed"
+msgstr "Удалено"
+
+msgid "Remove operation"
+msgstr "Удалить операцию"
+
+msgid "Set the start and end of the fragment first."
+msgstr "Сначала установите начало и конец фрагмента."
+
+msgid "This fragment overlaps an operation that has already been added."
+msgstr "Этот фрагмент пересекается с уже добавленной операцией."
+
+msgid "The complete audio track cannot be removed."
+msgstr "Нельзя удалить всю аудиодорожку целиком."
+
+msgid "The edited file could not be created."
+msgstr "Не удалось создать изменённый аудиофайл."
+
+msgid "Drag to change fragment duration"
+msgstr "Перетащите, чтобы изменить длительность фрагмента"
+
+msgid "Loading waveform…"
+msgstr "Загружаем осциллограмму…"
+
+msgid "Position"
+msgstr "Позиция"
+
+msgid "Result after stretching"
+msgstr "Результат изменения длительности"
+
+msgid "Reset selection"
+msgstr "Сбросить выделение"
+
+msgid "Remove fragment"
+msgstr "Удалить фрагмент"
+
+msgid "Apply speed"
+msgstr "Применить скорость"
+
+msgid "Drag the right ↔ handle to the left to speed up the selected fragment, or to the right to slow it down. The original end is shown by the thin line."
+msgstr "Перетащите правую ручку ↔ влево, чтобы ускорить выделенный фрагмент, или вправо, чтобы замедлить. Исходный конец отмечен тонкой линией."
+
+msgid "Drag the right boundary of the selected fragment to the left to speed it up, or to the right to slow it down. The waveform and playback change immediately."
+msgstr "Перетащите правую границу выделенного фрагмента влево, чтобы ускорить его, или вправо, чтобы замедлить. Осциллограмма и воспроизведение изменятся сразу."
+
+msgid "Pending edits"
+msgstr "Подготовленные изменения"
+
+msgid "Operations on the track"
+msgstr "Операции с дорожкой"
+
+msgid "No changes yet. The original file will remain unchanged."
+msgstr "Изменений пока нет. Исходный файл останется без изменений."
+
+msgid "The edits will be applied once, when the new audio file is created."
+msgstr "Все изменения будут применены один раз при создании нового аудиофайла."
+
+msgid "Create edited audio"
+msgstr "Создать изменённое аудио"
+
+msgid "The editor data is invalid."
+msgstr "Данные аудиоредактора некорректны."
+
+msgid "Choose MP3 or WAV output."
+msgstr "Выберите результат в формате MP3 или WAV."
+
+msgid "The audio editor is not ready yet."
+msgstr "Аудиоредактор ещё не готов."
+
+msgid "Audio files"
+msgstr "Аудиофайлы"
+
+msgid "Audio sequence"
+msgstr "Последовательность аудио"
+
+msgid "Arrange and edit audio"
+msgstr "Расставьте и отредактируйте аудио"
+
+msgid "Uploaded audio"
+msgstr "Загруженные аудио"
+
+msgid "Drag file names to change the order before applying the merge."
+msgstr "Перетаскивайте названия файлов, чтобы изменить их порядок до применения объединения."
+
+msgid "Add another audio"
+msgstr "Добавить ещё одно аудио"
+
+msgid "Apply merge"
+msgstr "Применить объединение"
+
+msgid "Apply the merge first."
+msgstr "Сначала примените объединение."
+
+msgid "The audio file could not be added."
+msgstr "Не удалось добавить аудиофайл."
+
+msgid "Choose an audio file."
+msgstr "Выберите аудиофайл."
+
+msgid "Combine audio, remove unwanted fragments or change their duration by dragging the right boundary."
+msgstr "Объединяйте аудио, удаляйте ненужные фрагменты или меняйте их длительность, перетаскивая правую границу."
+
+msgid "Current zoom"
+msgstr "Текущий масштаб"
+
+msgid "Continue editing"
+msgstr "Продолжить редактирование"
+
+msgid "The edited audio is not ready yet."
+msgstr "Изменённое аудио ещё не готово."
+
+msgid "The edited audio file could not be found."
+msgstr "Не удалось найти изменённый аудиофайл."
+
+msgid "Text file"
+msgstr "Текстовый файл"
+
+msgid "TXT in UTF-8. Each non-empty line will become a separate phrase."
+msgstr "TXT в кодировке UTF-8. Каждая непустая строка станет отдельной фразой."
+
+msgid "Start each phrase on a new line. Empty lines and lines containing only spaces are ignored."
+msgstr "Начинайте каждую фразу с новой строки. Пустые строки и строки из одних пробелов будут пропущены."
+
+msgid "First phrase.\nSecond phrase.\nThird phrase."
+msgstr "Первая фраза.\nВторая фраза.\nТретья фраза."
+
+msgid "Upload a TXT file in UTF-8."
+msgstr "Загрузите TXT-файл в кодировке UTF-8."
+
+msgid "The text file must use UTF-8 encoding."
+msgstr "Текстовый файл должен быть в кодировке UTF-8."
+
+msgid "Upload a text file or paste the voiceover text."
+msgstr "Загрузите текстовый файл или вставьте текст озвучки."
+
+msgid "This is how the recording will be split"
+msgstr "Так запись будет разделена на фразы"
+
+msgid "Click to edit the text"
+msgstr "Нажмите, чтобы изменить текст или разбиение"
+
+msgid "Phrase cutting"
+msgstr "Нарезка на фразы"
+
+msgid "Check the phrase boundaries"
+msgstr "Проверьте границы фраз"
+
+msgid "Listen to each phrase and adjust its beginning or end if necessary."
+msgstr "Прослушайте каждую фразу и при необходимости поправьте её начало или конец."
+
+msgid "Download all phrases as ZIP"
+msgstr "Скачать все фразы в ZIP"
+
+#, python-format
+msgid "Phrase %(number)s"
+msgstr "Фраза %(number)s"
+
+msgid "Manually adjusted"
+msgstr "Границы изменены вручную"
+
+msgid "Download phrase"
+msgstr "Скачать фразу"
+
+msgid "Recognizing and cutting the recording…"
+msgstr "Распознаём и нарезаем запись…"
+
+msgid "128 kbit/s — smaller file"
+msgstr "128 кбит/с — меньший размер файла"
+
+msgid "192 kbit/s — recommended"
+msgstr "192 кбит/с — рекомендуется"
+
+msgid "256 kbit/s — high quality"
+msgstr "256 кбит/с — высокое качество"
+
+msgid "320 kbit/s — maximum quality"
+msgstr "320 кбит/с — максимальное качество"
+
+msgid "MP3 quality"
+msgstr "Качество MP3"
+
+msgid "A higher bitrate preserves more audio detail but increases the file size."
+msgstr "Чем выше битрейт, тем больше деталей сохраняется в звуке и тем больше размер файла."
+
+msgid "Reading audio duration…"
+msgstr "Определяем длительность аудио…"
+
+msgid "The audio duration could not be determined"
+msgstr "Не удалось определить длительность аудио"
+
+msgid "Add 1 second of silence to the end"
+msgstr "Добавить 1 секунду тишины в конец"
+
+msgid "Add 1 second of silence"
+msgstr "Добавить 1 секунду тишины"
+
+msgid "To the beginning"
+msgstr "В начало"
+
+msgid "To the end"
+msgstr "В конец"
+
+msgid "Silence at the end"
+msgstr "Тишина в конце"
+
+msgid "Remove audio"
+msgstr "Удалить аудио"
+
+msgid "Removing audio…"
+msgstr "Удаляем аудио…"
+
+msgid "Undoing the added audio…"
+msgstr "Отменяем добавление аудио…"
+
+msgid "The audio file could not be removed."
+msgstr "Не удалось удалить аудиофайл."
+
+msgid "The only audio file cannot be removed."
+msgstr "Нельзя удалить единственный аудиофайл."
+
+msgid "There is no added audio to undo."
+msgstr "Нет добавленного аудио, которое можно отменить."
+
+msgid "Choose an audio file to remove."
+msgstr "Выберите аудиофайл для удаления."
+
 #~ msgid "Start each filename with its phrase number, for example 003.wav."
 #~ msgstr "Начинайте имя каждого файла с номера фразы, например 003.wav."

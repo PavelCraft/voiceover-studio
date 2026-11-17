@@ -29,6 +29,14 @@ def load_environment():
         os.environ.setdefault(name.strip(), value.strip().strip("\"'"))
 
 
+def validate_production_environment():
+    if os.environ.get("DJANGO_DEBUG") != "0":
+        raise RuntimeError(
+            "Refusing to deploy with DJANGO_DEBUG enabled. "
+            "Set DJANGO_DEBUG=0 in /etc/voiceover-studio.env."
+        )
+
+
 def run(args, *, capture=False, dry_run=False):
     printable = " ".join(map(str, args))
     print(f"$ {printable}", flush=True)
@@ -59,6 +67,7 @@ def main():
     parser.add_argument("--status", action="store_true")
     args = parser.parse_args()
     load_environment()
+    validate_production_environment()
     if not (ROOT / ".git").exists() or not VENV.exists():
         raise RuntimeError("Run the first-time server bootstrap before deployment")
 

@@ -67,11 +67,11 @@ class Project(models.Model):
         null=True,
         blank=True,
     )
-    audio_file = models.FileField(upload_to=audio_upload_to, blank=True, null=True)
+    audio_file = models.FileField(upload_to=audio_upload_to, blank=True, null=True, max_length=500)
     audio_revision = models.UUIDField(default=uuid.uuid4, editable=False)
     timecodes_text = models.TextField(blank=True)
-    timecodes_file = models.FileField(upload_to=timecodes_upload_to, blank=True, null=True)
-    video_file = models.FileField(upload_to=video_upload_to, blank=True, null=True)
+    timecodes_file = models.FileField(upload_to=timecodes_upload_to, blank=True, null=True, max_length=500)
+    video_file = models.FileField(upload_to=video_upload_to, blank=True, null=True, max_length=500)
     timing_project = models.OneToOneField(
         "PhraseTimingProject",
         on_delete=models.SET_NULL,
@@ -125,7 +125,7 @@ class Segment(models.Model):
     audio_end = models.FloatField(null=True, blank=True)
     recognition_score = models.FloatField(null=True, blank=True)
     status = models.CharField(max_length=30, default="pending")
-    audio_file = models.FileField(upload_to=segment_upload_to, blank=True)
+    audio_file = models.FileField(upload_to=segment_upload_to, blank=True, max_length=500)
     source_duration = models.FloatField(null=True, blank=True)
     output_duration = models.FloatField(null=True, blank=True)
     speed = models.FloatField(default=1.0)
@@ -164,7 +164,7 @@ class SegmentReplacement(models.Model):
         related_name="segment_replacements",
     )
     position = models.PositiveIntegerField()
-    audio_file = models.FileField(upload_to=replacement_audio_upload_to)
+    audio_file = models.FileField(upload_to=replacement_audio_upload_to, max_length=500)
     audio_start = models.FloatField(default=0)
     audio_end = models.FloatField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -179,8 +179,8 @@ class SegmentReplacement(models.Model):
 
 class VideoAudioMergeJob(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    video_file = models.FileField(upload_to=merge_video_upload_to)
-    audio_file = models.FileField(upload_to=merge_audio_upload_to)
+    video_file = models.FileField(upload_to=merge_video_upload_to, max_length=500)
+    audio_file = models.FileField(upload_to=merge_audio_upload_to, max_length=500)
     mix_original = models.BooleanField(default=False)
     original_volume = models.FloatField(default=0.35)
     voice_volume = models.FloatField(default=1.0)
@@ -284,8 +284,8 @@ class LocalizationProject(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="localization_projects")
     title = models.CharField(max_length=200, blank=True)
-    source_video = models.FileField(upload_to=localization_upload_to)
-    source_script = models.FileField(upload_to=localization_upload_to, blank=True, null=True)
+    source_video = models.FileField(upload_to=localization_upload_to, max_length=500)
+    source_script = models.FileField(upload_to=localization_upload_to, blank=True, null=True, max_length=500)
     source_script_text = models.TextField(blank=True)
     copy_settings = models.BooleanField(default=True)
     export_format = models.CharField(max_length=10, choices=Project.FORMAT_CHOICES, default=Project.FORMAT_M4A)
@@ -303,9 +303,9 @@ class LocalizationVersion(models.Model):
     localization = models.ForeignKey(LocalizationProject, on_delete=models.CASCADE, related_name="versions")
     language_code = models.CharField(max_length=16)
     language_name = models.CharField(max_length=80)
-    script_file = models.FileField(upload_to=localization_version_upload_to, blank=True, null=True)
+    script_file = models.FileField(upload_to=localization_version_upload_to, blank=True, null=True, max_length=500)
     script_text = models.TextField(blank=True)
-    audio_file = models.FileField(upload_to=localization_version_upload_to, blank=True, null=True)
+    audio_file = models.FileField(upload_to=localization_version_upload_to, blank=True, null=True, max_length=500)
     project = models.OneToOneField(Project, on_delete=models.SET_NULL, null=True, blank=True, related_name="localization_version")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -336,8 +336,8 @@ class TakesProject(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="takes_projects")
     title = models.CharField(max_length=200, blank=True)
-    video_file = models.FileField(upload_to=takes_upload_to)
-    script_file = models.FileField(upload_to=takes_upload_to, blank=True, null=True)
+    video_file = models.FileField(upload_to=takes_upload_to, max_length=500)
+    script_file = models.FileField(upload_to=takes_upload_to, blank=True, null=True, max_length=500)
     script_text = models.TextField(blank=True)
     mode = models.CharField(max_length=20, choices=MODE_CHOICES, default=MODE_LINES)
     processing_status = models.CharField(max_length=20, default="pending")
@@ -355,7 +355,7 @@ class TakesProject(models.Model):
 class TakeRecording(models.Model):
     takes_project = models.ForeignKey(TakesProject, on_delete=models.CASCADE, related_name="recordings")
     position = models.PositiveIntegerField()
-    media_file = models.FileField(upload_to=take_recording_upload_to)
+    media_file = models.FileField(upload_to=take_recording_upload_to, max_length=500)
     transcription_file = models.CharField(max_length=500, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -383,7 +383,7 @@ class TakeCandidate(models.Model):
     source_start = models.FloatField()
     source_end = models.FloatField()
     score = models.FloatField(default=0)
-    audio_file = models.FileField(upload_to=take_candidate_upload_to, blank=True)
+    audio_file = models.FileField(upload_to=take_candidate_upload_to, blank=True, max_length=500)
     selected = models.BooleanField(default=False)
     rejected = models.BooleanField(default=False)
     manual = models.BooleanField(default=False)
@@ -399,6 +399,7 @@ class TakeCandidate(models.Model):
 
 class MediaToolJob(models.Model):
     KIND_TRANSCRIBE = "audio-to-text"
+    KIND_EDIT_AUDIO = "edit-audio"
     KIND_REPLACE = "replace-fragment"
     KIND_SPLIT = "split-phrases"
     KIND_FIT = "fit-subtitles"
@@ -407,6 +408,7 @@ class MediaToolJob(models.Model):
     KIND_SUBTITLES = "create-subtitles"
     KIND_CHOICES = [
         (KIND_TRANSCRIBE, _("Audio to text")),
+        (KIND_EDIT_AUDIO, _("Edit audio")),
         (KIND_REPLACE, _("Replace a voiceover fragment")),
         (KIND_SPLIT, _("Split voiceover into phrases")),
         (KIND_FIT, _("Fit audio to subtitles")),
@@ -436,7 +438,7 @@ class MediaToolInput(models.Model):
     job = models.ForeignKey(MediaToolJob, on_delete=models.CASCADE, related_name="inputs")
     role = models.CharField(max_length=30)
     position = models.PositiveIntegerField(default=0)
-    media_file = models.FileField(upload_to=media_tool_input_upload_to)
+    media_file = models.FileField(upload_to=media_tool_input_upload_to, max_length=500)
 
     class Meta:
         ordering = ["role", "position"]
@@ -455,7 +457,7 @@ class PhraseTimingProject(models.Model):
         "auth.User", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="phrase_timing_projects",
     )
-    video_file = models.FileField(upload_to=phrase_timing_video_upload_to)
+    video_file = models.FileField(upload_to=phrase_timing_video_upload_to, max_length=500)
     source_text = models.TextField(blank=True)
     mode = models.CharField(max_length=20, choices=MODE_CHOICES, default=MODE_MANUAL)
     phrases = models.JSONField(default=list)

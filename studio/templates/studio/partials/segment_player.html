@@ -1,0 +1,9 @@
+{% load i18n l10n %}
+<div class="segment-player"{% if player_duration != None %} data-duration="{{ player_duration|unlocalize }}"{% endif %}>
+  <button class="segment-player-toggle" type="button" aria-label="{% trans 'Play' %}">▶</button>
+  <span class="segment-player-time">0:00 / --:--</span>
+  <input class="segment-player-seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="{% trans 'Playback position' %}">
+  <button class="segment-player-volume" type="button" aria-label="{% trans 'Mute or unmute' %}">🔊</button>
+  <a class="segment-player-download" href="{{ player_download_url }}" download aria-label="{% trans 'Download fragment' %}">⇩</a>
+  <audio preload="metadata" src="{{ player_url }}"></audio>
+</div>

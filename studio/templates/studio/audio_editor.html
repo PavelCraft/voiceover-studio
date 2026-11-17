@@ -1,0 +1,97 @@
+{% extends "studio/base.html" %}
+{% load i18n static l10n %}
+{% block title %}{% trans "Edit audio" %} — Voiceover Studio{% endblock %}
+{% block topbar_title %}{% trans "Edit audio" %}{% endblock %}
+{% block navigation %}<nav class="workflow-nav"><a href="{% url 'tool-prototype' tool_slug='edit-audio' %}">← {% trans "New audio file" %}</a><a href="{% url 'tools-index' %}">{% trans "All tools" %}</a></nav>{% endblock %}
+{% block content %}
+<div class="page-heading compact audio-editor-heading"><div><p class="eyebrow"><span></span>{% trans "Waveform editor" %}</p><h1>{% trans "Edit audio" %}</h1><p class="lead">{% trans "Combine audio, remove unwanted fragments or change their duration by dragging the right boundary." %}</p></div></div>
+{% if job.processing_status == 'failed' %}
+<section class="card work-card result-card"><p class="errorlist">{{ job.processing_error }}</p><a class="button secondary" href="{% url 'tool-prototype' tool_slug='edit-audio' %}">{% trans "Try another file" %}</a></section>
+{% elif job.processing_status != 'complete' %}
+<section class="card work-card result-card" id="audio-editor-processing" data-status-url="{% url 'media-tool-status' job_id=job.id %}" data-result-url="{% url 'audio-editor-job' job_id=job.id %}"><div class="processing-progress"><i></i><strong>{% trans "Preparing audio editor…" %}</strong><span id="job-step">{{ job.processing_step }}</span></div><p>{% trans "The waveform or edited file is being prepared. This page will update automatically." %}</p></section>
+<script>const box=document.getElementById('audio-editor-processing');const poll=()=>fetch(box.dataset.statusUrl,{cache:'no-store'}).then(r=>r.json()).then(data=>{if(data.complete||data.failed)location.replace(box.dataset.resultUrl);else{document.getElementById('job-step').textContent=data.step;setTimeout(poll,900)}}).catch(()=>setTimeout(poll,1800));poll();</script>
+{% elif job.result_manifest.stage == 'result' %}
+<section class="card work-card audio-editor-result"><p class="eyebrow"><span></span>{% trans "Edited file is ready" %}</p><h2>{% trans "Listen before downloading" %}</h2>{% include "studio/partials/segment_player.html" with player_url=output_url player_download_url=output_url player_duration=job.result_manifest.output_duration only %}<p>{% blocktrans with duration=job.result_manifest.output_duration|floatformat:2 %}Result duration: {{ duration }} seconds{% endblocktrans %}</p><div class="project-actions"><a class="button primary" href="{{ output_url }}" download>{% trans "Download edited audio" %}</a><form method="post" action="{% url 'audio-editor-continue' job_id=job.id %}">{% csrf_token %}<button class="button secondary" type="submit">{% trans "Continue editing" %}</button></form><a class="button secondary" href="{% url 'tool-prototype' tool_slug='edit-audio' %}">{% trans "Edit another file" %}</a></div></section>
+<script src="{% static 'studio/segment_players.js' %}?v=20261112-3"></script>
+{% else %}
+<section
+  class="audio-editor card"
+  id="audio-editor"
+  data-preview-url="{{ preview_url }}"
+  data-peaks-url="{{ peaks_url }}"
+  data-save-url="{% url 'audio-editor-save' job_id=job.id %}"
+  data-draft-url="{% url 'audio-editor-draft' job_id=job.id %}"
+  data-debug-url="{% url 'audio-editor-debug' job_id=job.id %}"
+  data-add-url="{% url 'audio-editor-add' job_id=job.id %}"
+  data-remove-url="{% url 'audio-editor-remove' job_id=job.id %}"
+  data-can-undo-addition="{% if can_undo_audio_addition %}true{% else %}false{% endif %}"
+  data-status-url="{% url 'media-tool-status' job_id=job.id %}"
+  data-result-url="{% url 'audio-editor-job' job_id=job.id %}"
+  data-output-format="{{ job.options.output_format|default:'mp3' }}"
+  data-mp3-bitrate="{{ job.options.mp3_bitrate|default:'192' }}"
+  data-label-cut="{% trans 'Removed' %}"
+  data-label-speed="{% trans 'Speed' %}"
+  data-label-silence="{% trans 'Pause' %}"
+  data-label-trailing-silence="{% trans 'Silence at the end' %}"
+  data-label-remove-track="{% trans 'Remove audio' %}"
+  data-label-removing-track="{% trans 'Removing audio…' %}"
+  data-label-undoing-addition="{% trans 'Undoing the added audio…' %}"
+  data-label-remove-operation="{% trans 'Remove operation' %}"
+  data-error-selection="{% trans 'Set the start and end of the fragment first.' %}"
+  data-error-overlap="{% trans 'This fragment overlaps an operation that has already been added.' %}"
+  data-error-whole-track="{% trans 'The complete audio track cannot be removed.' %}"
+  data-error-save="{% trans 'The edited file could not be created.' %}"
+  data-error-add="{% trans 'The audio file could not be added.' %}"
+  data-error-remove="{% trans 'The audio file could not be removed.' %}"
+  data-error-merge-first="{% trans 'Apply the merge first.' %}"
+  data-label-track="{% trans 'Audio' %}"
+>
+  <header class="audio-editor-header"><div><p class="step">{% trans "Audio sequence" %}</p><h2>{% trans "Arrange and edit audio" %}</h2></div><div class="audio-editor-history"><button type="button" id="audio-editor-undo" title="{% trans 'Undo' %}">↶</button><button type="button" id="audio-editor-redo" title="{% trans 'Redo' %}">↷</button></div></header>
+  <section class="audio-track-panel" id="audio-track-panel">
+    <div><p class="section-kicker">{% trans "Uploaded audio" %}</p><p>{% trans "Drag file names to change the order before applying the merge." %}</p></div>
+    <ol class="audio-track-list" id="audio-track-list"></ol>
+    <div class="audio-track-actions">
+      <button class="button secondary" id="audio-add-track" type="button">+ {% trans "Add another audio" %}</button>
+      <button class="button secondary" id="audio-add-silence" type="button" aria-expanded="false" aria-controls="audio-silence-placement">+ {% trans "Add 1 second of silence" %}</button>
+      <div class="audio-silence-placement" id="audio-silence-placement" hidden>
+        <button class="small-button secondary" type="button" data-silence-position="start">{% trans "To the beginning" %}</button>
+        <button class="small-button secondary" type="button" data-silence-position="end">{% trans "To the end" %}</button>
+      </div>
+      <button class="button primary" id="audio-apply-merge" type="button" disabled>{% trans "Apply merge" %}</button>
+      <input id="audio-add-track-input" type="file" accept="audio/*,video/mp4,video/webm,.mkv" hidden>
+    </div>
+    <p class="audio-track-status" id="audio-track-status"></p>
+  </section>
+  <div class="audio-waveform-shell" id="audio-waveform-shell">
+    <canvas id="audio-waveform-canvas"></canvas>
+    <div class="audio-selection" id="audio-selection" hidden></div>
+    <div class="audio-boundary start" id="audio-selection-start" hidden><span></span></div>
+    <div class="audio-boundary source-end" id="audio-selection-end" hidden><span></span></div>
+    <div class="audio-playhead" id="audio-playhead"></div>
+    <div class="waveform-loading" id="audio-waveform-loading">{% trans "Loading waveform…" %}</div>
+  </div>
+  <div class="audio-editor-readout">
+    <span><small>{% trans "Position" %}</small><strong id="audio-cursor-time">00:00.000</strong></span>
+    <span><small>{% trans "Selection" %}</small><strong id="audio-selection-time">—</strong></span>
+    <span class="speed-readout"><small>{% trans "Result after stretching" %}</small><strong id="audio-speed-value">1.00×</strong><em id="audio-target-duration">—</em></span>
+  </div>
+  <div class="audio-editor-toolbar">
+    <button class="icon-button" id="audio-editor-play" type="button" aria-label="{% trans 'Play or pause' %}">▶</button>
+    <span class="audio-zoom-controls"><button class="icon-button" id="audio-zoom-out" type="button" title="{% trans 'Zoom out' %}">−</button><output id="audio-zoom-value" aria-label="{% trans 'Current zoom' %}">1.0×</output><button class="icon-button" id="audio-zoom-in" type="button" title="{% trans 'Zoom in' %}">+</button></span>
+    <button class="small-button secondary" id="audio-set-start" type="button">I · {% trans "Start" %}</button>
+    <button class="small-button secondary" id="audio-set-end" type="button">O · {% trans "End" %}</button>
+    <button class="small-button" id="audio-reset-selection" type="button">{% trans "Reset selection" %}</button>
+    <span class="toolbar-spacer"></span>
+    <button class="button danger" id="audio-delete-selection" type="button">{% trans "Remove fragment" %}</button>
+  </div>
+  <p class="audio-editor-hint">{% trans "Drag the right boundary of the selected fragment to the left to speed it up, or to the right to slow it down. The waveform and playback change immediately." %}</p>
+  <p class="editor-message" id="audio-editor-message"></p>
+  <section class="audio-operation-panel"><div><p class="section-kicker">{% trans "Pending edits" %}</p><h3>{% trans "Operations on the track" %}</h3></div><ol id="audio-operation-list"></ol><p id="audio-operation-empty">{% trans "No changes yet. The original file will remain unchanged." %}</p></section>
+  <footer class="audio-editor-footer"><span>{% trans "The edits will be applied once, when the new audio file is created." %}</span><button class="button primary" id="audio-export" type="button">{% trans "Create edited audio" %}</button></footer>
+  {{ audio_tracks|json_script:"audio-editor-tracks" }}
+  {{ audio_editor_state|json_script:"audio-editor-state" }}
+  <div id="audio-editor-players" hidden>{% for track in audio_tracks %}<audio preload="auto" data-track-id="{{ track.input_id }}" src="{{ track.preview_url }}"></audio>{% endfor %}</div>
+</section>
+<script src="{% static 'studio/audio_editor.js' %}?v=20261114-1"></script>
+{% endif %}
+{% endblock %}

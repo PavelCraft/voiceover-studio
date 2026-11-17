@@ -1,6 +1,9 @@
 import json
+import io
 import tempfile
 import time
+import wave
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,7 +14,10 @@ from django.template import Context, Template
 from django.test import Client, SimpleTestCase, TransactionTestCase, override_settings
 from django.utils import translation
 
-from .forms import PhraseTimingToolForm
+from .forms import (
+    AudioEditorToolForm, PhraseTimingToolForm, PrepareVoiceoverToolForm,
+    SplitPhrasesToolForm,
+)
 
 from .models import (
     BillingAccount, LocalizationProject, ManualSegmentBoundary, MediaToolInput, MediaToolJob, PhraseTimingProject, ProcessingJob,
@@ -28,12 +34,127 @@ from .services.reprocessing import (
     build_change_plan, remap_project_annotations,
 )
 from .services.storage import StorageLimitError, reserve_storage
-from .services.tool_processing import build_docx_bytes, process_media_tool_job
-from .services.voiceover import align_entries, parse_timecodes, snap_boundaries
+from .services.tool_processing import _validated_audio_operations, build_docx_bytes, process_media_tool_job
+from .services.voiceover import (
+    align_entries, merge_overlapping_transcriptions, parse_timecodes, probe_duration, snap_boundaries,
+    transcribe_long_audio,
+)
 from voiceover_core.timing import (
     estimate_speech_duration, export_timed_phrases, format_editable_timing_text, parse_editable_timing_text,
     reconcile_phrase_texts, split_script,
 )
+from voiceover_core.media import atempo_filters, mp3_codec_arguments, normalize_mp3_bitrate
+
+
+class MediaFilterTests(SimpleTestCase):
+    def test_atempo_supports_slowing_down_and_speeding_up(self):
+        self.assertEqual(atempo_filters(0.25), ["atempo=0.5", "atempo=0.500000000"])
+        self.assertEqual(
+            atempo_filters(0.05),
+            ["atempo=0.5", "atempo=0.5", "atempo=0.5", "atempo=0.5", "atempo=0.800000000"],
+        )
+        self.assertEqual(atempo_filters(1.0), [])
+        self.assertEqual(atempo_filters(4.0), ["atempo=2.0", "atempo=2.000000000"])
+
+    def test_audio_editor_allows_a_short_fragment_to_be_stretched_well_beyond_four_times(self):
+        operations = _validated_audio_operations(
+            [{"type": "speed", "start": 1.0, "end": 1.1, "speed": 0.05}],
+            duration=3.0,
+        )
+        self.assertEqual(operations[0]["speed"], 0.05)
+
+    def test_audio_editor_can_replace_a_tiny_silent_source_with_a_long_pause(self):
+        operations = _validated_audio_operations(
+            [{"type": "silence", "start": 1.0, "end": 1.015, "duration": 60.0}],
+            duration=3.0,
+        )
+        self.assertEqual(operations[0]["duration"], 60.0)
+
+    def test_audio_editor_can_insert_silence_without_replacing_source_audio(self):
+        operations = _validated_audio_operations(
+            [{"type": "silence", "start": 1.0, "end": 1.0, "duration": 1.0}],
+            duration=3.0,
+        )
+        self.assertEqual(
+            operations[0],
+            {"type": "silence", "start": 1.0, "end": 1.0, "duration": 1.0},
+        )
+
+    def test_mp3_quality_is_shared_by_every_mp3_export_form(self):
+        for form_class in (AudioEditorToolForm, SplitPhrasesToolForm, PrepareVoiceoverToolForm):
+            form = form_class()
+            self.assertIn("mp3_bitrate", form.fields)
+            self.assertEqual(
+                [value for value, _label in form.fields["mp3_bitrate"].choices],
+                ["128", "192", "256", "320"],
+            )
+            self.assertGreater(
+                list(form.fields).index("mp3_bitrate"),
+                list(form.fields).index("output_format"),
+            )
+
+    def test_mp3_codec_arguments_validate_and_reuse_the_selected_bitrate(self):
+        self.assertEqual(mp3_codec_arguments("320"), ["-c:a", "libmp3lame", "-b:a", "320k"])
+        self.assertEqual(normalize_mp3_bitrate("999"), "192")
+
+    def test_overlapping_transcriptions_use_each_word_once_at_the_join(self):
+        first = {
+            "language": "ru",
+            "words": [
+                {"word": "первое", "start": 294.0, "end": 294.5},
+                {"word": "слово", "start": 296.0, "end": 296.4},
+                {"word": "дубликат", "start": 298.0, "end": 298.5},
+            ],
+            "segments": [{"text": "первое слово дубликат", "start": 294.0, "end": 298.5}],
+        }
+        second = {
+            "language": "ru",
+            "words": [
+                {"word": "слово", "start": 1.0, "end": 1.4},
+                {"word": "второе", "start": 3.0, "end": 3.5},
+            ],
+            "segments": [{"text": "слово второе", "start": 1.0, "end": 3.5}],
+        }
+
+        result = merge_overlapping_transcriptions([first, second], [0.0, 295.0], 600.0)
+
+        self.assertEqual([word["word"] for word in result["words"]], ["первое", "слово", "второе"])
+        self.assertEqual(result["text"], "первое слово второе")
+        self.assertEqual(result["words"][-1]["start"], 298.0)
+        self.assertNotIn("дубликат", result["text"])
+
+    def test_long_transcription_uses_five_minute_chunks_with_five_second_overlap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, output = root / "source.flac", root / "transcription.json"
+            source.write_bytes(b"audio")
+            progress = []
+
+            def create_chunk(command):
+                Path(command[-1]).write_bytes(b"small chunk")
+
+            def recognize(chunk, transcript, **kwargs):
+                number = int(Path(chunk).stem)
+                return {
+                    "language": "ru",
+                    "words": [{"word": f"слово{number}", "start": 3.0, "end": 3.4}],
+                    "segments": [{"text": f"слово{number}", "start": 3.0, "end": 3.4}],
+                }
+
+            with patch("studio.services.voiceover.probe_duration", return_value=960.0), \
+                 patch("studio.services.voiceover.run", side_effect=create_chunk) as ffmpeg, \
+                 patch("studio.services.voiceover.transcribe", side_effect=recognize):
+                result = transcribe_long_audio(
+                    source, output, progress=lambda index, total: progress.append((index, total)),
+                )
+
+            self.assertEqual(ffmpeg.call_count, 4)
+            starts = [call.args[0][call.args[0].index("-ss") + 1] for call in ffmpeg.call_args_list]
+            self.assertEqual(starts, ["0.000000", "295.000000", "590.000000", "885.000000"])
+            self.assertEqual(progress, [(1, 4), (2, 4), (3, 4), (4, 4)])
+            self.assertEqual([word["start"] for word in result["words"]], [3.0, 298.0, 593.0, 888.0])
+            self.assertTrue(output.is_file())
+            self.assertFalse((root / "transcription-chunks").exists())
 
 
 class PhraseTimingCoreTests(SimpleTestCase):
@@ -1028,8 +1149,623 @@ class MediaToolsTests(TransactionTestCase):
         self.assertContains(tools, "Разметка фраз по времени")
         self.assertContains(tools, "Заменить фрагмент озвучки")
         self.assertContains(tools, "Подготовить озвучку")
+        self.assertContains(tools, "Редактировать аудио")
         self.assertContains(merge, "Наложить поверх исходного звука")
         self.assertContains(merge, 'class="toggle"')
+
+    def test_every_mp3_export_page_uses_the_shared_quality_control(self):
+        for slug in ("edit-audio", "split-phrases", "prepare-voiceover"):
+            page = self.client.get(f"/tools/prototype/{slug}/")
+            self.assertEqual(page.status_code, 200)
+            self.assertContains(page, 'name="mp3_bitrate"')
+            self.assertContains(page, "data-mp3-quality")
+            self.assertContains(page, "studio/mp3_quality.js")
+
+    def test_audio_editor_upload_opens_the_editor_job(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            with patch("studio.views.start_media_tool_worker", return_value=True) as start:
+                response = self.client.post(
+                    "/tools/prototype/edit-audio/",
+                    {
+                        "audio": SimpleUploadedFile("voice.wav", self._wav_bytes(1.0), content_type="audio/wav"),
+                        "output_format": "mp3",
+                        "mp3_bitrate": "320",
+                    },
+                )
+            job = MediaToolJob.objects.get(kind=MediaToolJob.KIND_EDIT_AUDIO)
+            self.assertRedirects(response, f"/tools/audio-editor/{job.id}/", fetch_redirect_response=False)
+            self.assertEqual(job.inputs.get().role, "audio")
+            self.assertEqual(job.options["mp3_bitrate"], "320")
+            start.assert_called_once_with(job)
+
+    def test_audio_editor_renders_waveform_controls_and_queues_export(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={"output_format": "wav"},
+                processing_status="complete",
+                result_manifest={
+                    "stage": "editing", "editor_ready": True, "duration": 3.0,
+                    "preview": "tools/jobs/editor-preview.mp3", "peaks": "tools/jobs/waveform-peaks.json",
+                },
+            )
+            MediaToolInput.objects.create(
+                job=job, role="audio", media_file=SimpleUploadedFile("voice.wav", self._wav_bytes(3.0)),
+            )
+            page = self.client.get(f"/tools/audio-editor/{job.id}/")
+            self.assertContains(page, 'id="audio-waveform-canvas"')
+            self.assertNotContains(page, 'id="audio-speed-handle"')
+            self.assertNotContains(page, 'id="audio-apply-speed"')
+            self.assertContains(page, 'id="audio-zoom-out"')
+            self.assertContains(page, 'id="audio-zoom-in"')
+            self.assertContains(page, 'id="audio-track-list"')
+            self.assertContains(page, 'data-debug-url=')
+            self.assertContains(page, 'data-draft-url=')
+            self.assertContains(page, f'/tools/audio-editor/{job.id}/preview/')
+            self.assertContains(page, 'id="audio-add-track"')
+            self.assertContains(page, 'id="audio-add-silence"')
+            self.assertContains(page, "Добавить 1 секунду тишины")
+            self.assertContains(page, 'data-silence-position="start"')
+            self.assertContains(page, "В начало")
+            self.assertContains(page, 'data-silence-position="end"')
+            self.assertContains(page, "В конец")
+            self.assertContains(page, 'data-remove-url=')
+            self.assertContains(page, 'id="audio-apply-merge"')
+            self.assertContains(page, 'id="audio-editor-state"')
+            self.assertContains(page, 'data-error-merge-first=')
+            self.assertContains(page, "Сначала примените объединение.")
+            self.assertContains(page, "Удалить фрагмент")
+            editor_script = (Path(settings.BASE_DIR) / "studio/static/studio/audio_editor.js").read_text()
+            self.assertIn('pause({keepResume: true})', editor_script)
+            self.assertIn('cursor = virtualSilenceCursor() ?? sourceToEdited(Math.min(duration, currentSourceTime()))', editor_script)
+            self.assertIn('const start = cursor;', editor_script)
+            self.assertIn('await seekAudio(position.audio, position.localTime)', editor_script)
+            self.assertIn('element.addEventListener("seeked", onSeeked);', editor_script)
+            self.assertNotIn('Math.abs(audio.currentTime - position.localTime) > .2', editor_script)
+            self.assertNotIn('Math.abs(audio.currentTime - position.localTime) > .25', editor_script)
+            self.assertNotIn('cursor >= editedDuration() - .005 ? 0 : cursor', editor_script)
+            self.assertIn('setSourcePosition(sourceStart)', editor_script)
+            self.assertNotIn('const shouldResume =', editor_script)
+            self.assertIn('shell.setPointerCapture(event.pointerId)', editor_script)
+            self.assertIn('value == null || value === ""', editor_script)
+            self.assertIn('shell.addEventListener("pointerdown", beginWaveformDrag, {capture: true})', editor_script)
+            self.assertIn('shell.addEventListener("pointermove", moveWaveformDrag, {capture: true})', editor_script)
+            self.assertIn('const MIN_MEDIA_PLAYBACK_RATE = .0625', editor_script)
+            self.assertIn('const nextPlaybackBoundary = source =>', editor_script)
+            self.assertIn('operation.end < duration - .0005', editor_script)
+            self.assertIn('const liveSource = currentSourceTime()', editor_script)
+            boundary_scheduler = editor_script.split('function schedulePlaybackBoundary()', 1)[1].split('async function beginVirtualSilence', 1)[0]
+            self.assertNotIn('setSourcePosition(boundary)', boundary_scheduler)
+            self.assertIn('const silenceCursor = virtualSilenceCursor()', editor_script)
+            self.assertIn('resumePlaybackAtBoundary(boundary, token)', editor_script)
+            self.assertIn('silenceOperationsForRange(', editor_script)
+            self.assertIn('const adjustsGeneratedSilence = draggingHandle.hasGeneratedSilence', editor_script)
+            self.assertIn('beginVirtualSilence(silence, sourceToEdited(boundary, false, "left"), token)', editor_script)
+            self.assertIn('{type: "silence", start: sourcePosition, end: sourcePosition, duration: 1}', editor_script)
+            self.assertIn('const sourcePosition = position === "start" ? 0 : duration', editor_script)
+            self.assertIn('const editingLocked = () => !mergeApplied', editor_script)
+            self.assertIn('document.getElementById("audio-apply-merge").disabled = mergeApplied', editor_script)
+            self.assertIn('const canRemoveTrack = !mergeApplied && group.length === 1', editor_script)
+            self.assertIn('cursor = clamp(waveformDrag.cursor - delta * viewDuration', editor_script)
+            self.assertIn('playhead.style.left = "50%"', editor_script)
+            self.assertIn('const editedDuration = (includeDraft = true) =>', editor_script)
+            self.assertIn('const position = setSourcePosition(sourceTarget)', editor_script)
+            self.assertIn('const sourceFrom = editedToSource(from, "right")', editor_script)
+            self.assertIn('startButton.classList.toggle("primary", selectionStart != null)', editor_script)
+            self.assertIn('startMarker.hidden = !hasStart', editor_script)
+            self.assertIn('endMarker.addEventListener("pointermove"', editor_script)
+            self.assertIn('speedOperationsForRange(', editor_script)
+            self.assertIn('audio.playbackRate = desiredRate', editor_script)
+            self.assertIn('operations = draftOperations', editor_script)
+            self.assertIn('selectionEnd = sourceToEdited(drag.sourceEnd, false, "right")', editor_script)
+            self.assertIn('targetDuration ?? selectionEnd - selectionStart', editor_script)
+            self.assertIn('selectionEnd > selectionStart', editor_script)
+            self.assertNotIn('selectionEnd - selectionStart >= .01', editor_script)
+            self.assertIn('debugLog("play_button"', editor_script)
+            self.assertIn('cutSkipTarget = activeCut.end', editor_script)
+            self.assertIn('resumePlaybackAfterCut(activeCut.end)', editor_script)
+            self.assertIn('async function resumePlaybackAfterCut(sourceTarget)', editor_script)
+            self.assertIn('await audio.play();', editor_script)
+            self.assertIn('const speed = speedForOperation(existing) * (inside ? relativeRate : 1)', editor_script)
+            self.assertIn('cutOperationsForRange(withoutSelectedSilence, sourceStart, sourceEnd)', editor_script)
+            self.assertIn('removeInsertedSilenceFromEditedRange(operations, selectionStart, selectionEnd)', editor_script)
+            self.assertIn('row.addEventListener("dragstart"', editor_script)
+            self.assertIn('mergeApplied = true', editor_script)
+            self.assertIn('body.append("editor_state", JSON.stringify(editorState()))', editor_script)
+            self.assertIn('function operationsInOrder(', editor_script)
+            self.assertIn('trackGroups = [[...trackOrder]]', editor_script)
+            self.assertIn('formatRulerTime(time, interval)', editor_script)
+            self.assertNotIn('operations.filter(operation => operation.type === "speed").forEach', editor_script)
+            with patch("studio.views.start_media_tool_worker", return_value=True) as start:
+                response = self.client.post(
+                    f"/tools/audio-editor/{job.id}/save/",
+                    data=json.dumps({
+                        "output_format": "wav",
+                        "mp3_bitrate": "320",
+                        "trailing_silence": 1,
+                        "operations": [{"type": "speed", "start": 1.0, "end": 2.0, "speed": 0.5}],
+                    }),
+                    content_type="application/json",
+                )
+            self.assertEqual(response.status_code, 200)
+            job.refresh_from_db()
+            self.assertEqual(job.options["phase"], "render")
+            self.assertEqual(job.options["mp3_bitrate"], "320")
+            self.assertEqual(job.options["trailing_silence"], 1)
+            self.assertEqual(job.options["operations"][0]["speed"], 0.5)
+            start.assert_called_once_with(job)
+
+    def test_audio_editor_persists_applied_merge_across_page_reload(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={},
+                processing_status="complete",
+                result_manifest={"stage": "editing", "editor_ready": True},
+            )
+            first = MediaToolInput.objects.create(
+                job=job, role="audio", position=0,
+                media_file=SimpleUploadedFile("first.wav", self._wav_bytes(.5)),
+            )
+            second = MediaToolInput.objects.create(
+                job=job, role="audio", position=1,
+                media_file=SimpleUploadedFile("second.wav", self._wav_bytes(.5)),
+            )
+            job.result_manifest = {
+                "stage": "editing", "editor_ready": True,
+                "tracks": [
+                    {"input_id": first.id, "duration": .5},
+                    {"input_id": second.id, "duration": .5},
+                ],
+            }
+            job.save(update_fields=["result_manifest"])
+            state = {
+                "trackOrder": [first.id, second.id],
+                "trackGroups": [[first.id, second.id]],
+                "mergeApplied": True,
+                "cursor": .5,
+                "selectionStart": None,
+                "selectionEnd": None,
+                "targetDuration": None,
+                "selectionRate": 1,
+                "operations": [
+                    {"type": "silence", "start": .5, "end": .5, "duration": 1.0},
+                ],
+                "trailingSilence": 0,
+            }
+
+            response = self.client.post(
+                f"/tools/audio-editor/{job.id}/draft/",
+                data=json.dumps(state),
+                content_type="application/json",
+            )
+
+            self.assertEqual(response.status_code, 200)
+            job.refresh_from_db()
+            self.assertTrue(job.options["editor_draft_state"]["mergeApplied"])
+            self.assertEqual(job.options["editor_draft_state"]["operations"], state["operations"])
+            page = self.client.get(f"/tools/audio-editor/{job.id}/")
+            self.assertTrue(page.context["audio_editor_state"]["mergeApplied"])
+
+    def test_audio_editor_preview_supports_byte_ranges_for_seeking(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                processing_status="complete",
+                result_manifest={"stage": "editing", "editor_ready": True},
+            )
+            item = MediaToolInput.objects.create(
+                job=job, role="audio", media_file=SimpleUploadedFile("voice.wav", self._wav_bytes(1.0)),
+            )
+            preview = Path(media_root) / "tools" / "jobs" / str(job.id) / "output" / "preview.mp3"
+            preview.parent.mkdir(parents=True, exist_ok=True)
+            preview.write_bytes(bytes(range(256)) * 4)
+            job.result_manifest = {
+                "stage": "editing", "editor_ready": True,
+                "tracks": [{
+                    "input_id": item.id, "name": "voice.wav", "duration": 1.0,
+                    "preview": preview.relative_to(media_root).as_posix(), "peaks": "peaks.json",
+                }],
+            }
+            job.save(update_fields=["result_manifest"])
+
+            response = self.client.get(
+                f"/tools/audio-editor/{job.id}/preview/{item.id}/",
+                HTTP_RANGE="bytes=100-199",
+            )
+
+            self.assertEqual(response.status_code, 206)
+            self.assertEqual(response["Accept-Ranges"], "bytes")
+            self.assertEqual(response["Content-Range"], "bytes 100-199/1024")
+            self.assertEqual(response["Content-Length"], "100")
+            self.assertEqual(b"".join(response.streaming_content), preview.read_bytes()[100:200])
+
+    def test_audio_editor_result_can_be_committed_as_a_fresh_edit_session(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={"phase": "render", "output_format": "wav", "operations": [{"type": "cut"}]},
+                processing_status="complete",
+                result_manifest={"stage": "result", "output_format": "wav", "output_duration": 1.0},
+            )
+            old_input = MediaToolInput.objects.create(
+                job=job, role="audio", media_file=SimpleUploadedFile("old.wav", self._wav_bytes(2.0)),
+            )
+            result = Path(media_root) / "tools" / "jobs" / str(job.id) / "output" / "edited-audio.wav"
+            result.parent.mkdir(parents=True, exist_ok=True)
+            result.write_bytes(self._wav_bytes(1.0))
+            job.result_file = result.relative_to(media_root).as_posix()
+            job.save(update_fields=["result_file"])
+
+            page = self.client.get(f"/tools/audio-editor/{job.id}/")
+            self.assertContains(page, "Продолжить редактирование")
+            self.assertContains(page, 'data-duration="1.0"')
+            with patch("studio.views.start_media_tool_worker", return_value=True) as start:
+                response = self.client.post(f"/tools/audio-editor/{job.id}/continue/")
+
+            self.assertRedirects(response, f"/tools/audio-editor/{job.id}/", fetch_redirect_response=False)
+            job.refresh_from_db()
+            inputs = list(job.inputs.all())
+            self.assertEqual(len(inputs), 1)
+            self.assertNotEqual(inputs[0].id, old_input.id)
+            self.assertEqual(Path(inputs[0].media_file.path).read_bytes(), self._wav_bytes(1.0))
+            self.assertFalse(Path(old_input.media_file.path).exists())
+            self.assertEqual(job.options, {
+                "output_format": "wav", "mp3_bitrate": "192",
+                "phase": "prepare", "editor_track_order": [inputs[0].id],
+            })
+            self.assertEqual(job.result_manifest, {})
+            self.assertEqual(job.result_file, "")
+            self.assertFalse(result.exists())
+            start.assert_called_once_with(job)
+
+    def test_audio_editor_accepts_duplicate_files_and_renders_them_in_selected_order(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={"output_format": "wav"},
+            )
+            first = MediaToolInput.objects.create(
+                job=job, role="audio", position=0,
+                media_file=SimpleUploadedFile("same.wav", self._wav_bytes(1.0)),
+            )
+            second = MediaToolInput.objects.create(
+                job=job, role="audio", position=1,
+                media_file=SimpleUploadedFile("same.wav", self._wav_bytes(.6)),
+            )
+            job.options = {"output_format": "wav", "editor_track_order": [second.id, first.id]}
+            job.save(update_fields=["options"])
+            process_media_tool_job(job)
+            job.refresh_from_db()
+            self.assertEqual([item["input_id"] for item in job.result_manifest["tracks"]], [second.id, first.id])
+            self.assertEqual([item["name"] for item in job.result_manifest["tracks"]], ["same.wav", "same.wav"])
+
+            job.options = {
+                **job.options, "phase": "render", "operations": [],
+                "output_format": "wav", "editor_track_order": [second.id, first.id],
+            }
+            job.save(update_fields=["options"])
+            process_media_tool_job(job)
+            job.refresh_from_db()
+            self.assertEqual(job.result_manifest["stage"], "result")
+            self.assertAlmostEqual(job.result_manifest["output_duration"], 1.6, delta=.08)
+
+    def test_audio_editor_can_add_another_track_without_replacing_the_first(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={"output_format": "mp3"},
+                processing_status="complete",
+                result_manifest={"stage": "editing", "editor_ready": True},
+            )
+            first = MediaToolInput.objects.create(
+                job=job, role="audio", position=0,
+                media_file=SimpleUploadedFile("same.wav", self._wav_bytes(.5)),
+            )
+            job.result_manifest = {
+                "stage": "editing", "editor_ready": True,
+                "tracks": [{"input_id": first.id, "duration": .5}],
+            }
+            job.save(update_fields=["result_manifest"])
+            with patch("studio.views.start_media_tool_worker", return_value=True) as start:
+                response = self.client.post(
+                    f"/tools/audio-editor/{job.id}/add/",
+                    {
+                        "audio": SimpleUploadedFile("same.wav", self._wav_bytes(.5)),
+                        "editor_state": json.dumps({
+                            "trackOrder": [first.id],
+                            "trackGroups": [[first.id]],
+                            "mergeApplied": True,
+                            "cursor": .2,
+                            "selectionStart": .1,
+                            "selectionEnd": .4,
+                            "targetDuration": .3,
+                            "selectionRate": 1,
+                            "operations": [
+                                {"type": "cut", "start": .1, "end": .2},
+                                {"type": "silence", "start": .5, "end": .5, "duration": 1.0},
+                            ],
+                        }),
+                    },
+                )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(job.inputs.filter(role="audio").count(), 2)
+            job.refresh_from_db()
+            self.assertEqual(job.options["editor_track_order"][0], first.id)
+            self.assertEqual(len(job.options["editor_track_order"]), 2)
+            draft = job.options["editor_draft_state"]
+            self.assertEqual(draft["operations"], [
+                {"type": "cut", "start": .1, "end": .2},
+                {"type": "silence", "start": .5, "end": .5, "duration": 1.0},
+            ])
+            self.assertEqual(draft["selectionStart"], .1)
+            self.assertEqual(draft["selectionEnd"], .4)
+            self.assertEqual(draft["trackGroups"][0], [first.id])
+            self.assertEqual(draft["trackGroups"][1], [job.options["editor_track_order"][1]])
+            self.assertFalse(draft["mergeApplied"])
+            self.assertEqual(job.options["editor_addition_history"][-1]["track_id"], job.options["editor_track_order"][1])
+            start.assert_called_once_with(job)
+
+    def test_audio_editor_can_undo_the_last_added_track(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                processing_status="complete",
+                result_manifest={"stage": "editing", "editor_ready": True},
+            )
+            first = MediaToolInput.objects.create(
+                job=job, role="audio", position=0,
+                media_file=SimpleUploadedFile("first.wav", self._wav_bytes(.5)),
+            )
+            second = MediaToolInput.objects.create(
+                job=job, role="audio", position=1,
+                media_file=SimpleUploadedFile("second.wav", self._wav_bytes(.5)),
+            )
+            state_before = {
+                "trackOrder": [first.id], "trackGroups": [[first.id]], "mergeApplied": True,
+                "operations": [], "trailingSilence": 1,
+            }
+            job.options = {
+                "editor_track_order": [first.id, second.id],
+                "editor_addition_history": [{"track_id": second.id, "state_before": state_before}],
+            }
+            job.result_manifest = {
+                "stage": "editing", "editor_ready": True,
+                "tracks": [
+                    {"input_id": first.id, "duration": .5},
+                    {"input_id": second.id, "duration": .5},
+                ],
+            }
+            job.save(update_fields=["options", "result_manifest"])
+
+            with patch("studio.views.start_media_tool_worker", return_value=True) as start:
+                response = self.client.post(
+                    f"/tools/audio-editor/{job.id}/remove/",
+                    data=json.dumps({"undo_addition": True}),
+                    content_type="application/json",
+                )
+
+            self.assertEqual(response.status_code, 200)
+            job.refresh_from_db()
+            self.assertEqual(list(job.inputs.values_list("id", flat=True)), [first.id])
+            self.assertEqual(job.options["editor_draft_state"]["trackOrder"], [first.id])
+            self.assertEqual(job.options["editor_draft_state"]["trailingSilence"], 1)
+            self.assertEqual(job.options["editor_addition_history"], [])
+            start.assert_called_once_with(job)
+
+    def test_audio_editor_can_remove_any_track_when_more_than_one_exists(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                processing_status="complete",
+                result_manifest={"stage": "editing", "editor_ready": True},
+            )
+            first = MediaToolInput.objects.create(
+                job=job, role="audio", position=0,
+                media_file=SimpleUploadedFile("first.wav", self._wav_bytes(.5)),
+            )
+            second = MediaToolInput.objects.create(
+                job=job, role="audio", position=1,
+                media_file=SimpleUploadedFile("second.wav", self._wav_bytes(.5)),
+            )
+            job.result_manifest = {
+                "stage": "editing", "editor_ready": True,
+                "tracks": [
+                    {"input_id": first.id, "duration": .5},
+                    {"input_id": second.id, "duration": .5},
+                ],
+            }
+            job.save(update_fields=["result_manifest"])
+            remaining_state = {
+                "trackOrder": [second.id], "trackGroups": [[second.id]], "mergeApplied": True,
+                "operations": [], "trailingSilence": 0,
+            }
+
+            with patch("studio.views.start_media_tool_worker", return_value=True) as start:
+                response = self.client.post(
+                    f"/tools/audio-editor/{job.id}/remove/",
+                    data=json.dumps({"track_id": first.id, "editor_state": remaining_state}),
+                    content_type="application/json",
+                )
+
+            self.assertEqual(response.status_code, 200)
+            job.refresh_from_db()
+            self.assertEqual(list(job.inputs.values_list("id", flat=True)), [second.id])
+            self.assertEqual(job.options["editor_track_order"], [second.id])
+            start.assert_called_once_with(job)
+
+    def test_audio_editor_processes_cut_and_speed_without_changing_source(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            source_bytes = self._wav_bytes(4.0)
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={"output_format": "wav"},
+            )
+            item = MediaToolInput.objects.create(
+                job=job, role="audio", media_file=SimpleUploadedFile("voice.wav", source_bytes),
+            )
+            process_media_tool_job(job)
+            job.refresh_from_db()
+            self.assertEqual(job.result_manifest["stage"], "editing")
+            self.assertTrue((Path(media_root) / job.result_manifest["peaks"]).is_file())
+            self.assertEqual(Path(item.media_file.path).read_bytes(), source_bytes)
+
+            job.options = {
+                "phase": "render", "output_format": "wav",
+                "operations": [
+                    {"type": "cut", "start": 1.0, "end": 2.0},
+                    {"type": "speed", "start": 2.0, "end": 3.0, "speed": 2.0},
+                ],
+            }
+            job.save(update_fields=["options"])
+            process_media_tool_job(job)
+            job.refresh_from_db()
+            self.assertEqual(job.result_manifest["stage"], "result")
+            self.assertAlmostEqual(job.result_manifest["output_duration"], 2.5, delta=.08)
+            self.assertEqual(Path(item.media_file.path).read_bytes(), source_bytes)
+
+    def test_audio_editor_replaces_a_tiny_source_interval_with_exact_silence(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={
+                    "phase": "render", "output_format": "wav",
+                    "operations": [
+                        {"type": "silence", "start": .4, "end": .415, "duration": 2.0},
+                    ],
+                },
+            )
+            MediaToolInput.objects.create(
+                job=job, role="audio", media_file=SimpleUploadedFile("voice.wav", self._wav_bytes(1.0)),
+            )
+
+            process_media_tool_job(job)
+            job.refresh_from_db()
+
+            self.assertAlmostEqual(job.result_manifest["output_duration"], 2.985, delta=.01)
+            self.assertAlmostEqual(probe_duration(Path(media_root) / job.result_file), 2.985, delta=.03)
+
+    def test_audio_editor_can_append_one_second_of_silence(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={
+                    "phase": "render", "output_format": "wav",
+                    "operations": [], "trailing_silence": 1,
+                },
+            )
+            MediaToolInput.objects.create(
+                job=job, role="audio", media_file=SimpleUploadedFile("voice.wav", self._wav_bytes(1.0)),
+            )
+
+            process_media_tool_job(job)
+            job.refresh_from_db()
+
+            self.assertAlmostEqual(job.result_manifest["output_duration"], 2.0, delta=.01)
+            self.assertAlmostEqual(probe_duration(Path(media_root) / job.result_file), 2.0, delta=.03)
+
+    def test_audio_editor_can_insert_silence_between_two_audio_files(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={
+                    "phase": "render", "output_format": "wav",
+                    "operations": [
+                        {"type": "silence", "start": .5, "end": .5, "duration": 1.0},
+                    ],
+                },
+            )
+            first = MediaToolInput.objects.create(
+                job=job, role="audio", position=0,
+                media_file=SimpleUploadedFile("first.wav", self._wav_bytes(.5)),
+            )
+            second = MediaToolInput.objects.create(
+                job=job, role="audio", position=1,
+                media_file=SimpleUploadedFile("second.wav", self._wav_bytes(.5)),
+            )
+            job.options["editor_track_order"] = [first.id, second.id]
+            job.result_manifest = {
+                "tracks": [
+                    {"input_id": first.id, "duration": .5},
+                    {"input_id": second.id, "duration": .5},
+                ],
+            }
+            job.save(update_fields=["options", "result_manifest"])
+
+            process_media_tool_job(job)
+            job.refresh_from_db()
+
+            self.assertAlmostEqual(job.result_manifest["output_duration"], 2.0, delta=.02)
+            self.assertAlmostEqual(probe_duration(Path(media_root) / job.result_file), 2.0, delta=.04)
+
+    def test_audio_editor_mp3_reports_edited_timeline_without_encoder_padding(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={"phase": "render", "output_format": "mp3", "mp3_bitrate": "320", "operations": []},
+                result_manifest={"tracks": [{"input_id": 1, "duration": 1.0}]},
+            )
+            item = MediaToolInput.objects.create(
+                job=job, role="audio", media_file=SimpleUploadedFile("voice.wav", self._wav_bytes(1.0)),
+            )
+            job.result_manifest["tracks"][0]["input_id"] = item.id
+            job.options["editor_track_order"] = [item.id]
+            job.save(update_fields=["result_manifest", "options"])
+
+            process_media_tool_job(job)
+            job.refresh_from_db()
+
+            self.assertEqual(job.result_manifest["output_duration"], 1.0)
+            self.assertEqual(job.result_manifest["mp3_bitrate"], "320")
+            self.assertGreater(probe_duration(Path(media_root) / job.result_file), 1.0)
+
+    def test_audio_editor_renders_a_second_speed_change_inside_an_already_changed_range(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={
+                    "phase": "render", "output_format": "wav",
+                    "operations": [
+                        {"type": "speed", "start": 0.0, "end": 1.0, "speed": 0.5},
+                        {"type": "speed", "start": 1.5, "end": 2.0, "speed": 0.5},
+                    ],
+                },
+            )
+            MediaToolInput.objects.create(
+                job=job, role="audio", media_file=SimpleUploadedFile("voice.wav", self._wav_bytes(4.0)),
+            )
+            process_media_tool_job(job)
+            job.refresh_from_db()
+            # The middle half-second has been returned to 1x inside a formerly 0.5x range.
+            self.assertAlmostEqual(job.result_manifest["output_duration"], 5.5, delta=.25)
+
+    def test_audio_editor_rejects_overlapping_operations(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_EDIT_AUDIO,
+                options={
+                    "phase": "render", "output_format": "mp3",
+                    "operations": [
+                        {"type": "cut", "start": .5, "end": 1.5},
+                        {"type": "speed", "start": 1.0, "end": 2.0, "speed": 1.5},
+                    ],
+                },
+            )
+            MediaToolInput.objects.create(
+                job=job, role="audio", media_file=SimpleUploadedFile("voice.wav", self._wav_bytes(3.0)),
+            )
+            with self.assertRaisesRegex(Exception, "must not overlap"):
+                process_media_tool_job(job)
+
+    @staticmethod
+    def _wav_bytes(duration):
+        output = io.BytesIO()
+        with wave.open(output, "wb") as audio:
+            audio.setnchannels(1)
+            audio.setsampwidth(2)
+            audio.setframerate(8000)
+            audio.writeframes(b"\0\0" * int(8000 * duration))
+        return output.getvalue()
 
     def test_phrase_timing_manual_project_opens_reusable_editor(self):
         with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
@@ -1301,6 +2037,27 @@ class MediaToolsTests(TransactionTestCase):
         self.assertEqual(job.inputs.get().role, "media")
         start.assert_called_once_with(job)
 
+    def test_audio_to_text_accepts_long_original_filename(self):
+        long_name = f"{'long-video-name-' * 11}.mp4"
+        self.assertGreater(len(long_name), 100)
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                with patch("studio.views.start_media_tool_worker", return_value=True):
+                    response = self.client.post(
+                        "/tools/audio-to-text/",
+                        {
+                            "media": SimpleUploadedFile(long_name, b"video", content_type="video/mp4"),
+                            "language": "ru",
+                            "export_format": "both",
+                            "transcription_mode": "readable",
+                            "preserve_wording": "on",
+                        },
+                    )
+                self.assertEqual(response.status_code, 302)
+                media_input = MediaToolInput.objects.get(job__kind=MediaToolJob.KIND_TRANSCRIBE)
+                self.assertGreater(len(media_input.media_file.name), 100)
+                self.assertTrue(Path(media_input.media_file.path).is_file())
+
     def test_audio_to_text_job_produces_editable_text_and_valid_docx(self):
         with tempfile.TemporaryDirectory() as media_root:
             with override_settings(MEDIA_ROOT=media_root):
@@ -1408,22 +2165,132 @@ class MediaToolsTests(TransactionTestCase):
             self.assertContains(response, 'type="submit"')
             self.assertNotContains(response, "processing is not connected")
 
-    def test_split_tool_accepts_manual_intervals(self):
+    def test_split_tool_accepts_text_with_one_phrase_per_non_empty_line(self):
         with patch("studio.views.start_media_tool_worker", return_value=True):
             response = self.client.post(
                 "/tools/prototype/split-phrases/",
                 {
                     "audio": SimpleUploadedFile("voice.wav", b"audio", content_type="audio/wav"),
-                    "method": "manual",
-                    "manual_boundaries": "00:00.250 --> 00:03.800 First\n4.1 - 7.6 Second",
-                    "silence_seconds": ".8",
+                    "script_text": "  Первая фраза.  \n\n   \nВторая фраза.\n",
                     "output_format": "wav",
                 },
             )
         self.assertEqual(response.status_code, 302)
         job = MediaToolJob.objects.get()
-        self.assertEqual(job.options["method"], "manual")
-        self.assertIn("First", job.options["manual_boundaries"])
+        self.assertEqual(job.kind, MediaToolJob.KIND_SPLIT)
+        self.assertEqual(job.options["script_text"], "Первая фраза.  \n\n   \nВторая фраза.")
+        self.assertEqual(job.options["mp3_bitrate"], "192")
+        self.assertEqual(job.inputs.get().role, "audio")
+
+    def test_split_tool_explains_phrase_breakdown_and_reuses_boundary_editor(self):
+        page = self.client.get("/tools/prototype/split-phrases/")
+        self.assertContains(page, 'id="split-phrase-preview"')
+        self.assertContains(page, 'data-phrase-label="Фраза"')
+        self.assertContains(page, "Каждая непустая строка станет отдельной фразой")
+        self.assertContains(page, 'id="id_mp3_bitrate"')
+        self.assertContains(page, "320 кбит/с — максимальное качество")
+        self.assertContains(page, 'id="split-audio-duration"')
+        self.assertContains(page, 'data-label="Длительность"')
+        script = (Path(settings.BASE_DIR) / "studio/static/studio/split_phrases_form.js").read_text()
+        quality_script = (Path(settings.BASE_DIR) / "studio/static/studio/mp3_quality.js").read_text()
+        self.assertIn('.split(/\\r?\\n/)', script)
+        self.assertIn('.filter(Boolean)', script)
+        self.assertIn('format.value === "mp3"', quality_script)
+        self.assertIn('URL.createObjectURL(file)', script)
+        self.assertIn('Math.round(value * 1000)', script)
+
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            source = Path(media_root) / "tools" / "source.wav"
+            clip = Path(media_root) / "tools" / "phrase.wav"
+            peaks = Path(media_root) / "tools" / "peaks.json"
+            for path, content in ((source, self._wav_bytes(2)), (clip, self._wav_bytes(1)), (peaks, b"[]")):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(content)
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_SPLIT,
+                processing_status="complete",
+                result_file="tools/phrases.zip",
+                result_manifest={
+                    "source": "tools/source.wav", "peaks": "tools/peaks.json", "duration": 2,
+                    "segments": [{
+                        "position": 1, "text": "Первая фраза.", "audio_start": 0,
+                        "audio_end": 1, "score": 1, "status": "matched", "manual": False,
+                        "duration": 1, "file": "tools/phrase.wav",
+                    }],
+                },
+            )
+            result = self.client.get(f"/tools/job/{job.id}/")
+            self.assertContains(result, "Скачать все фразы в ZIP")
+            self.assertContains(result, "Редактировать границы вручную")
+            self.assertContains(result, 'id="segment-editor"')
+            self.assertContains(result, 'class="segment-player-seek"')
+            self.assertContains(result, f"/tools/split-phrases/{job.id}/phrase/1/editor/")
+
+            ranged = self.client.get(
+                f"/tools/split-phrases/{job.id}/phrase/1/",
+                HTTP_RANGE="bytes=100-199",
+            )
+            self.assertEqual(ranged.status_code, 206)
+            self.assertEqual(ranged["Accept-Ranges"], "bytes")
+            self.assertEqual(ranged["Content-Range"], f"bytes 100-199/{clip.stat().st_size}")
+            self.assertEqual(ranged["Content-Length"], "100")
+
+            saved = self.client.post(
+                f"/tools/split-phrases/{job.id}/phrase/1/boundary/",
+                data=json.dumps({"audio_start": .25, "audio_end": 1.5}),
+                content_type="application/json",
+            )
+            self.assertEqual(saved.status_code, 200)
+            job.refresh_from_db()
+            updated = job.result_manifest["segments"][0]
+            self.assertTrue(updated["manual"])
+            self.assertEqual(updated["audio_start"], .25)
+            self.assertEqual(updated["audio_end"], 1.5)
+            self.assertAlmostEqual(updated["duration"], 1.25, delta=.04)
+            self.assertTrue((Path(media_root) / job.result_file).is_file())
+
+    def test_split_tool_recognizes_aligns_trims_and_cuts_each_phrase(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_SPLIT,
+                options={
+                    "script_text": "Первая фраза.\n\nВторая фраза.\n   ",
+                    "output_format": "mp3", "mp3_bitrate": "320",
+                },
+            )
+            MediaToolInput.objects.create(
+                job=job, role="audio",
+                media_file=SimpleUploadedFile("voice.wav", self._wav_bytes(3), content_type="audio/wav"),
+            )
+
+            def aligned(entries, words):
+                for index, entry in enumerate(entries):
+                    entry.update(
+                        audio_start=index * 1.25,
+                        audio_end=index * 1.25 + 1,
+                        score=.98,
+                        status="matched",
+                    )
+                return entries
+
+            with patch("studio.services.tool_processing.transcribe_long_audio", return_value={"words": []}), \
+                 patch("studio.services.tool_processing.align_entries", side_effect=aligned), \
+                 patch("studio.services.tool_processing.snap_boundaries", side_effect=lambda entries, silences: entries), \
+                 patch("studio.services.tool_processing.detect_silences", return_value=[]):
+                process_media_tool_job(job)
+
+            job.refresh_from_db()
+            self.assertEqual(job.processing_status, "complete")
+            self.assertEqual(job.result_manifest["mp3_bitrate"], "320")
+            self.assertEqual([item["text"] for item in job.result_manifest["segments"]], [
+                "Первая фраза.", "Вторая фраза.",
+            ])
+            self.assertTrue(all(item["file"].endswith(".mp3") for item in job.result_manifest["segments"]))
+            self.assertTrue(all((Path(media_root) / item["file"]).is_file() for item in job.result_manifest["segments"]))
+            archive = Path(media_root) / job.result_file
+            self.assertTrue(archive.is_file())
+            with zipfile.ZipFile(archive) as bundle:
+                self.assertEqual(len(bundle.namelist()), 2)
 
     def test_media_tool_upload_creates_background_job(self):
         with patch("studio.views.start_media_tool_worker", return_value=True) as start:
@@ -1440,6 +2307,29 @@ class MediaToolsTests(TransactionTestCase):
         self.assertEqual(job.kind, MediaToolJob.KIND_PREPARE)
         self.assertEqual(job.inputs.get().role, "voiceover")
         start.assert_called_once_with(job)
+
+    def test_prepare_voiceover_uses_the_shared_mp3_quality(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            job = MediaToolJob.objects.create(
+                kind=MediaToolJob.KIND_PREPARE,
+                options={
+                    "output_format": "mp3", "mp3_bitrate": "256",
+                    "trim_edges": False, "normalize": False,
+                    "prevent_clipping": False, "soft_edges": False,
+                },
+            )
+            MediaToolInput.objects.create(
+                job=job, role="voiceover",
+                media_file=SimpleUploadedFile("voice.wav", self._wav_bytes(1.0)),
+            )
+
+            process_media_tool_job(job)
+            job.refresh_from_db()
+
+            self.assertEqual(job.processing_status, "complete")
+            self.assertEqual(job.result_manifest["mp3_bitrate"], "256")
+            self.assertTrue(job.result_file.endswith(".mp3"))
+            self.assertTrue((Path(media_root) / job.result_file).is_file())
 
     def test_valid_upload_creates_job_without_waiting_for_ffmpeg(self):
         video = SimpleUploadedFile(

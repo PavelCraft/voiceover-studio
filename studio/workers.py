@@ -8,6 +8,7 @@ from django.db import transaction
 from studio.models import MediaToolJob, PhraseTimingProject, ProcessingJob, Project, TakesProject, VideoAudioMergeJob
 from studio.services.storage import (
     estimate_from_fields,
+    estimate_media_tool_processing,
     estimate_voiceover_processing,
     release_storage,
     reserve_storage,
@@ -146,7 +147,7 @@ def start_media_tool_worker(job):
         return False
     reserve_storage(
         reservation_key,
-        estimate_from_fields(*(item.media_file for item in job.inputs.all())),
+        estimate_media_tool_processing(job),
     )
     claimed = MediaToolJob.objects.filter(pk=job.pk).exclude(
         processing_status__in={"queued", "processing"}

@@ -1,8 +1,10 @@
+import re
 import tempfile
 from pathlib import Path
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from .models import LocalizationProject, PhraseTimingProject, Project, TakesProject, VideoAudioMergeJob
+from voiceover_core.media import DEFAULT_MP3_BITRATE, normalize_mp3_bitrate
 from voiceover_core.subtitles import SubtitleParseError, parse_manual_ranges, parse_script
 from .services.voiceover import ProcessingError, probe_has_audio
 
@@ -39,6 +41,40 @@ def validate_extension(upload, allowed, message):
     if upload and Path(upload.name).suffix.lower() not in allowed:
         raise forms.ValidationError(message)
     return upload
+
+
+def mp3_quality_field():
+    return forms.ChoiceField(
+        required=False,
+        choices=[
+            ("128", _("128 kbit/s — smaller file")),
+            ("192", _("192 kbit/s — recommended")),
+            ("256", _("256 kbit/s — high quality")),
+            ("320", _("320 kbit/s — maximum quality")),
+        ],
+        initial=DEFAULT_MP3_BITRATE,
+        label=_("MP3 quality"),
+        help_text=_("A higher bitrate preserves more audio detail but increases the file size."),
+    )
+
+
+class Mp3QualityFormMixin:
+    """Add one shared MP3-quality field immediately after output_format."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        quality = mp3_quality_field()
+        reordered = {}
+        for name, field in self.fields.items():
+            reordered[name] = field
+            if name == "output_format":
+                reordered["mp3_bitrate"] = quality
+        if "mp3_bitrate" not in reordered:
+            reordered["mp3_bitrate"] = quality
+        self.fields = reordered
+
+    def clean_mp3_bitrate(self):
+        return normalize_mp3_bitrate(self.cleaned_data.get("mp3_bitrate"))
 
 class AudioUploadForm(forms.ModelForm):
     class Meta:
@@ -406,35 +442,66 @@ class ReplaceFragmentToolForm(forms.Form):
         return cleaned
 
 
-class SplitPhrasesToolForm(forms.Form):
-    audio = forms.FileField(label=_("Long voiceover recording"))
-    method = forms.ChoiceField(choices=[
-        ("script", _("By script or subtitles")),
-        ("pauses", _("By long pauses")),
-        ("manual", _("By manually entered intervals")),
-    ], widget=forms.RadioSelect)
-    script = forms.FileField(required=False, label=_("Script or subtitles"))
-    silence_seconds = forms.FloatField(min_value=.2, max_value=10, initial=.8, label=_("Minimum pause"))
-    manual_boundaries = forms.CharField(
-        required=False,
-        label=_("Manual intervals"),
-        help_text=_("One interval per line, for example: 00:00.250 --> 00:03.800 First phrase"),
-        widget=forms.Textarea(attrs={"rows": 6, "placeholder": "00:00.250 --> 00:03.800 First phrase\n00:04.100 --> 00:07.500 Second phrase"}),
+class AudioEditorToolForm(Mp3QualityFormMixin, forms.Form):
+    audio = MultipleFileField(
+        label=_("Audio files"),
+        widget=MultipleFileInput(attrs={"accept": "audio/*,video/mp4,video/webm,.mkv"}),
     )
-    output_format = forms.ChoiceField(choices=[("wav", "WAV"), ("mp3", "MP3")], label=_("Output format"))
+    output_format = forms.ChoiceField(
+        choices=[("mp3", _("MP3 — compact")), ("wav", _("WAV — lossless"))],
+        initial="mp3",
+        label=_("Output format"),
+    )
 
+    def clean_audio(self):
+        return [
+            validate_extension(
+                upload, ALLOWED_AUDIO,
+                _("Unsupported audio format. Allowed formats: %(formats)s.") % {"formats": AUDIO_EXTENSIONS},
+            )
+            for upload in self.cleaned_data["audio"]
+        ]
+
+
+class SplitPhrasesToolForm(Mp3QualityFormMixin, forms.Form):
+    audio = forms.FileField(label=_("Long voiceover recording"))
+    script = forms.FileField(
+        required=False,
+        label=_("Text file"),
+        help_text=_("TXT in UTF-8. Each non-empty line will become a separate phrase."),
+        widget=forms.FileInput(attrs={"accept": ".txt,text/plain"}),
+    )
+    script_text = forms.CharField(
+        required=False,
+        label=_("Voiceover text"),
+        help_text=_("Start each phrase on a new line. Empty lines and lines containing only spaces are ignored."),
+        widget=forms.Textarea(attrs={
+            "rows": 12,
+            "placeholder": _("First phrase.\nSecond phrase.\nThird phrase."),
+        }),
+    )
+    output_format = forms.ChoiceField(
+        choices=[("wav", _("WAV — lossless")), ("mp3", _("MP3 — compact"))],
+        initial="wav",
+        label=_("Output format"),
+    )
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("method") == "script" and not cleaned.get("script"):
-            raise forms.ValidationError(_("Add a script or subtitles for script-based splitting."))
-        if cleaned.get("method") == "manual":
-            boundaries = cleaned.get("manual_boundaries", "").strip()
-            if not boundaries:
-                raise forms.ValidationError(_("Enter at least one manual interval."))
+        upload, text = cleaned.get("script"), cleaned.get("script_text", "").strip()
+        if upload and Path(upload.name).suffix.lower() != ".txt":
+            self.add_error("script", _("Upload a TXT file in UTF-8."))
+        if upload and not text:
             try:
-                parse_manual_ranges(boundaries)
-            except SubtitleParseError as error:
-                raise forms.ValidationError(_("Manual intervals could not be parsed: %(error)s") % {"error": error}) from error
+                text = upload.read().decode("utf-8-sig")
+                upload.seek(0)
+            except UnicodeDecodeError:
+                self.add_error("script", _("The text file must use UTF-8 encoding."))
+        if not upload and not text:
+            raise forms.ValidationError(_("Upload a text file or paste the voiceover text."))
+        phrases = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()] if text else []
+        if text and not any(phrases):
+            raise forms.ValidationError(_("The text contains no phrases."))
+        cleaned["script_text"] = text
         return cleaned
 
 
@@ -444,7 +511,7 @@ class FitSubtitlesToolForm(forms.Form):
     speed_limit = forms.ChoiceField(choices=[("1.12", _("Up to 12%")), ("1.20", _("Up to 20%")), ("3.0", _("Fit automatically"))], initial="1.12", label=_("Allowed speed-up"))
 
 
-class PrepareVoiceoverToolForm(forms.Form):
+class PrepareVoiceoverToolForm(Mp3QualityFormMixin, forms.Form):
     files = MultipleFileField(label=_("Voiceover files"))
     trim_edges = forms.BooleanField(required=False, initial=True, label=_("Trim silence at the edges"))
     normalize = forms.BooleanField(required=False, initial=True, label=_("Even out loudness"))
@@ -610,6 +677,7 @@ class PhraseTimingToolForm(forms.ModelForm):
 
 
 TOOL_FORMS = {
+    "edit-audio": AudioEditorToolForm,
     "replace-fragment": ReplaceFragmentToolForm,
     "split-phrases": SplitPhrasesToolForm,
     "fit-subtitles": FitSubtitlesToolForm,

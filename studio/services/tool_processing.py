@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import math
 import re
 import shutil
 import zipfile
@@ -12,9 +13,15 @@ from django.utils import timezone
 from groq import Groq
 
 from studio.models import MediaToolJob
-from studio.services.voiceover import ProcessingError, load_groq_key, probe_duration, run, transcribe
-from voiceover_core.alignment import align_entries, tokenize
-from voiceover_core.media import atempo_filters, video_codec_arguments
+from studio.services.voiceover import (
+    ProcessingError, _write_waveform_peaks, detect_silences, load_groq_key, probe_duration, run,
+    transcribe_long_audio,
+)
+from voiceover_core.alignment import align_entries, snap_boundaries, tokenize
+from voiceover_core.media import (
+    MAX_AUDIO_EDIT_SPEED, MIN_AUDIO_EDIT_SPEED,
+    atempo_filters, mp3_codec_arguments, normalize_mp3_bitrate, video_codec_arguments,
+)
 from voiceover_core.subtitles import (
     SubtitleParseError,
     format_srt,
@@ -175,36 +182,10 @@ def _format_readable_text(text, preserve_wording=True):
 
 
 def _transcribe_prepared_audio(job, prepared, output, language, prompt):
-    transcript_json = output / "transcription.json"
-    duration = probe_duration(prepared)
-    if duration <= 900:
-        return transcribe(prepared, transcript_json, language=language, prompt=prompt)
-    chunks_dir = output / "recognition-chunks"
-    chunks_dir.mkdir(parents=True, exist_ok=True)
-    run([
-        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(prepared),
-        "-map", "0:a:0", "-c", "copy", "-f", "segment", "-segment_time", "900",
-        "-reset_timestamps", "1", str(chunks_dir / "%03d.flac"),
-    ])
-    paths = sorted(chunks_dir.glob("*.flac"))
-    combined = {"text": "", "words": [], "segments": [], "duration": duration, "language": language or ""}
-    offset = 0.0
-    for index, path in enumerate(paths, 1):
-        _update(job, f"recognizing speech {index}/{len(paths)}")
-        part = transcribe(path, chunks_dir / f"{path.stem}.json", language=language, prompt=prompt)
-        if not combined["language"]:
-            combined["language"] = part.get("language", "")
-        combined["text"] = f"{combined['text']} {part.get('text', '')}".strip()
-        for word in part.get("words") or []:
-            combined["words"].append(dict(word, start=float(word["start"]) + offset, end=float(word["end"]) + offset))
-        for segment in part.get("segments") or []:
-            item = dict(segment)
-            item["start"] = float(item.get("start", 0)) + offset
-            item["end"] = float(item.get("end", 0)) + offset
-            combined["segments"].append(item)
-        offset += probe_duration(path)
-    transcript_json.write_text(json.dumps(combined, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return combined
+    return transcribe_long_audio(
+        prepared, output / "transcription.json", language=language, prompt=prompt,
+        progress=lambda index, total: _update(job, f"recognizing speech {index}/{total}"),
+    )
 
 
 def _transcribe_audio(job):
@@ -335,27 +316,100 @@ def _detect_sound_ranges(path, minimum_pause):
     return ranges
 
 
+def _split_phrase_lines(text):
+    phrases = [re.sub(r"\s+", " ", line).strip() for line in str(text).lstrip("\ufeff").splitlines()]
+    phrases = [phrase for phrase in phrases if phrase]
+    if not phrases:
+        raise ProcessingError("The text contains no phrases")
+    return phrases
+
+
+def _split_phrase_target(output, segment, extension):
+    slug = re.sub(r"[^\w-]+", "_", segment["text"], flags=re.UNICODE).strip("_")[:48]
+    return output / f"{int(segment['position']):03d}{'_' + slug if slug else ''}.{extension}"
+
+
+def render_split_phrase(job, segment):
+    manifest = job.result_manifest or {}
+    source = Path(settings.MEDIA_ROOT) / manifest["source"]
+    output = _output_dir(job)
+    extension = manifest.get("output_format") or job.options.get("output_format", "wav")
+    mp3_bitrate = normalize_mp3_bitrate(
+        manifest.get("mp3_bitrate") or job.options.get("mp3_bitrate")
+    )
+    old_file = Path(settings.MEDIA_ROOT) / segment["file"] if segment.get("file") else None
+    target = _split_phrase_target(output, segment, extension)
+    if old_file and old_file != target:
+        old_file.unlink(missing_ok=True)
+    start, end = float(segment["audio_start"]), float(segment["audio_end"])
+    codec = ["-c:a", "pcm_s24le"] if extension == "wav" else mp3_codec_arguments(mp3_bitrate)
+    run([
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-ss", f"{start:.6f}", "-t", f"{end - start:.6f}", "-i", str(source),
+        "-vn", *codec, str(target),
+    ])
+    segment["file"] = _relative(target)
+    segment["duration"] = round(probe_duration(target), 6)
+    return target
+
+
+def rebuild_split_phrases_archive(job):
+    manifest = job.result_manifest or {}
+    clips = [Path(settings.MEDIA_ROOT) / item["file"] for item in manifest.get("segments", []) if item.get("file")]
+    archive = _archive(_output_dir(job), "voiceover-phrases.zip", clips)
+    manifest["archive"] = _relative(archive)
+    manifest["count"] = len(clips)
+    job.result_manifest = manifest
+    return archive
+
+
 def _split_phrases(job):
-    audio = _input(job, "audio")
-    method = job.options.get("method", "script")
-    if method == "script":
-        entries = _read_script(_input(job, "script"))
-        ranges = [(entry["video_start"], entry["video_end"], entry["text"]) for entry in entries]
-    elif method == "manual":
-        entries = parse_manual_ranges(job.options.get("manual_boundaries", ""))
-        ranges = [(entry["video_start"], entry["video_end"], entry["text"]) for entry in entries]
-    else:
-        ranges = [(start, end, "") for start, end in _detect_sound_ranges(audio, float(job.options.get("silence_seconds", .8)))]
-    out, clips = _output_dir(job), []
-    extension = job.options.get("output_format", "wav")
-    for index, (start, end, text) in enumerate(ranges, 1):
-        slug = re.sub(r"[^\w-]+", "_", text, flags=re.UNICODE).strip("_")[:48]
-        target = out / f"{index:03d}{'_' + slug if slug else ''}.{extension}"
-        codec = ["-c:a", "pcm_s24le"] if extension == "wav" else ["-c:a", "libmp3lame", "-b:a", "192k"]
-        run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-ss", f"{start:.6f}", "-t", f"{end-start:.6f}", "-i", str(audio), "-vn", *codec, str(target)])
-        clips.append(target)
-    job.result_manifest = {"count": len(clips)}
-    return _archive(out, "voiceover-phrases.zip", clips)
+    audio, output = _input(job, "audio"), _output_dir(job)
+    text = job.options.get("script_text", "")
+    if not text and job.inputs.filter(role="script").exists():
+        text = _input(job, "script").read_text(encoding="utf-8-sig")
+    phrases = _split_phrase_lines(text)
+    source_wav, recognition = output / "source-44100.wav", output / "recognition.flac"
+    preview, peaks_path = output / "editor-preview.mp3", output / "waveform-peaks.json"
+    _update(job, "preparing audio")
+    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(audio), "-vn", "-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le", str(source_wav)])
+    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(audio), "-vn", "-ar", "16000", "-ac", "1", "-c:a", "flac", str(recognition)])
+    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(source_wav), "-vn", "-c:a", "libmp3lame", "-b:a", "128k", str(preview)])
+    duration = _write_waveform_peaks(source_wav, peaks_path)
+    _update(job, "recognizing speech")
+    transcript_path = output / "transcription.json"
+    payload = transcribe_long_audio(
+        recognition, transcript_path,
+        progress=lambda index, total: _update(job, f"recognizing speech {index}/{total}"),
+    )
+    recognition.unlink(missing_ok=True)
+    entries = [{"id": index, "text": phrase, "tokens": tokenize(phrase)} for index, phrase in enumerate(phrases, 1)]
+    _update(job, "matching phrases")
+    entries = align_entries(entries, payload["words"])
+    _update(job, "trimming edge pauses")
+    entries = snap_boundaries(entries, detect_silences(source_wav))
+    segments = []
+    for entry in entries:
+        segment = {
+            "position": entry["id"], "text": entry["text"],
+            "audio_start": entry.get("audio_start"), "audio_end": entry.get("audio_end"),
+            "score": entry.get("score"), "status": entry.get("status", "not_found"),
+            "boundary_status": entry.get("boundary_status", "word"), "manual": False, "file": "",
+        }
+        segments.append(segment)
+    job.result_manifest = {
+        "stage": "review", "source": _relative(source_wav), "preview": _relative(preview),
+        "peaks": _relative(peaks_path), "transcription": _relative(transcript_path),
+        "duration": duration, "output_format": job.options.get("output_format", "wav"),
+        "mp3_bitrate": normalize_mp3_bitrate(job.options.get("mp3_bitrate")),
+        "segments": segments,
+    }
+    _update(job, "cutting phrases")
+    for segment in segments:
+        if segment["audio_start"] is not None and segment["audio_end"] is not None:
+            render_split_phrase(job, segment)
+    archive = rebuild_split_phrases_archive(job)
+    return archive
 
 
 def _render_timed_audio(entries, sources, output, normalize=True):
@@ -388,7 +442,7 @@ def _fit_subtitles(job):
         source = voiceovers[0]
         flac, transcript = out / "recognition.flac", out / "transcription.json"
         run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(source), "-vn", "-ar", "16000", "-ac", "1", "-c:a", "flac", str(flac)])
-        words = transcribe(flac, transcript)["words"]
+        words = transcribe_long_audio(flac, transcript)["words"]
         flac.unlink(missing_ok=True)
         aligned_entries = [dict(entry, tokens=tokenize(entry["text"])) for entry in entries]
         align_entries(aligned_entries, words)
@@ -419,6 +473,7 @@ def _fit_subtitles(job):
 def _prepare_voiceover(job):
     out, results = _output_dir(job), []
     extension = job.options.get("output_format", "wav")
+    mp3_bitrate = normalize_mp3_bitrate(job.options.get("mp3_bitrate"))
     for index, source in enumerate(_inputs(job, "voiceover"), 1):
         target = out / f"{index:03d}-{source.stem}.{extension}"
         filters = []
@@ -433,14 +488,14 @@ def _prepare_voiceover(job):
         if job.options.get("soft_edges"):
             duration = probe_duration(source)
             filters.extend(["afade=t=in:st=0:d=0.008", f"afade=t=out:st={max(0, duration-0.008):.6f}:d=0.008"])
-        codec = ["-c:a", "pcm_s24le"] if extension == "wav" else ["-c:a", "libmp3lame", "-b:a", "192k"]
+        codec = ["-c:a", "pcm_s24le"] if extension == "wav" else mp3_codec_arguments(mp3_bitrate)
         command = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(source), "-vn"]
         if filters:
             command.extend(["-af", ",".join(filters)])
         command.extend([*codec, str(target)])
         run(command)
         results.append(target)
-    job.result_manifest = {"count": len(results)}
+    job.result_manifest = {"count": len(results), "mp3_bitrate": mp3_bitrate}
     return results[0] if len(results) == 1 else _archive(out, "prepared-voiceover.zip", results)
 
 
@@ -469,7 +524,7 @@ def _create_subtitles(job):
     out, flac, transcript = _output_dir(job), None, None
     flac, transcript = out / "recognition.flac", out / "transcription.json"
     run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(audio), "-vn", "-ar", "16000", "-ac", "1", "-c:a", "flac", str(flac)])
-    words = transcribe(flac, transcript)["words"]
+    words = transcribe_long_audio(flac, transcript)["words"]
     flac.unlink(missing_ok=True)
     aligned = align_entries([dict(item, tokens=tokenize(item["text"])) for item in phrases], words)
     missing = [item["id"] for item in aligned if item.get("audio_start") is None]
@@ -483,8 +538,233 @@ def _create_subtitles(job):
     return target
 
 
+def _prepare_audio_editor(job):
+    output = _output_dir(job)
+    existing = {int(item["input_id"]): item for item in (job.result_manifest or {}).get("tracks", []) if item.get("input_id")}
+    items = list(job.inputs.filter(role="audio").order_by("position", "id"))
+    by_id = {item.id: item for item in items}
+    requested = [int(value) for value in job.options.get("editor_track_order", []) if str(value).isdigit()]
+    ordered_ids = [value for value in requested if value in by_id]
+    ordered_ids.extend(item.id for item in items if item.id not in ordered_ids)
+    tracks = []
+    for number, input_id in enumerate(ordered_ids, 1):
+        item = by_id[input_id]
+        cached = existing.get(input_id, {})
+        cached_preview = Path(settings.MEDIA_ROOT) / cached.get("preview", "") if cached.get("preview") else None
+        cached_peaks = Path(settings.MEDIA_ROOT) / cached.get("peaks", "") if cached.get("peaks") else None
+        if cached_preview and cached_peaks and cached_preview.is_file() and cached_peaks.is_file():
+            tracks.append(cached)
+            continue
+        source = Path(item.media_file.path)
+        wav = output / f"track-{input_id}-waveform.wav"
+        preview = output / f"track-{input_id}-preview.mp3"
+        peaks = output / f"track-{input_id}-peaks.json"
+        _update(job, f"preparing waveform {number}/{len(ordered_ids)}")
+        run([
+            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(source),
+            "-map", "0:a:0", "-vn", "-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le", str(wav),
+        ])
+        duration = _write_waveform_peaks(wav, peaks)
+        run([
+            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(wav),
+            "-vn", "-c:a", "libmp3lame", "-b:a", "128k", str(preview),
+        ])
+        wav.unlink(missing_ok=True)
+        stored_name = Path(item.media_file.name).name
+        prefix = f"{item.position:03d}-"
+        display_name = stored_name[len(prefix):] if stored_name.startswith(prefix) else stored_name
+        tracks.append({
+            "input_id": input_id, "name": display_name, "duration": round(float(duration), 6),
+            "preview": _relative(preview), "peaks": _relative(peaks),
+        })
+    if not tracks:
+        raise ProcessingError("Missing input: audio")
+    first = tracks[0]
+    job.result_manifest = {
+        "stage": "editing",
+        "editor_ready": True,
+        "duration": round(sum(float(item["duration"]) for item in tracks), 6),
+        "preview": first["preview"],
+        "peaks": first["peaks"],
+        "tracks": tracks,
+    }
+    return Path(settings.MEDIA_ROOT) / first["preview"]
+
+
+def _ordered_audio_editor_inputs(job):
+    items = list(job.inputs.filter(role="audio").order_by("position", "id"))
+    by_id = {item.id: item for item in items}
+    requested = [int(value) for value in job.options.get("editor_track_order", []) if str(value).isdigit()]
+    ordered = [by_id[value] for value in requested if value in by_id]
+    ordered.extend(item for item in items if item.id not in {value.id for value in ordered})
+    return ordered
+
+
+def _validated_audio_operations(raw_operations, duration):
+    if not isinstance(raw_operations, list) or len(raw_operations) > 500:
+        raise ProcessingError("Invalid audio edit operations")
+    operations = []
+    for raw in raw_operations:
+        if not isinstance(raw, dict) or raw.get("type") not in {"cut", "speed", "silence"}:
+            raise ProcessingError("Invalid audio edit operation")
+        try:
+            start = float(raw["start"])
+            end = float(raw["end"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise ProcessingError("Invalid audio edit boundaries") from error
+        source_length = end - start
+        inserted_silence = raw["type"] == "silence" and abs(source_length) < 0.001
+        if (
+            not all(math.isfinite(value) for value in (start, end))
+            or start < 0
+            or end > duration + 0.01
+            or source_length < -0.001
+            or (source_length < 0.001 and not inserted_silence)
+        ):
+            raise ProcessingError("Invalid audio edit boundaries")
+        item = {"type": raw["type"], "start": max(0.0, start), "end": min(duration, end)}
+        if item["type"] == "speed":
+            try:
+                speed = float(raw["speed"])
+            except (KeyError, TypeError, ValueError) as error:
+                raise ProcessingError("Invalid audio speed") from error
+            if not math.isfinite(speed) or not MIN_AUDIO_EDIT_SPEED <= speed <= MAX_AUDIO_EDIT_SPEED:
+                raise ProcessingError("Invalid audio speed")
+            item["speed"] = speed
+        elif item["type"] == "silence":
+            try:
+                silence_duration = float(raw["duration"])
+            except (KeyError, TypeError, ValueError) as error:
+                raise ProcessingError("Invalid silence duration") from error
+            if not math.isfinite(silence_duration) or silence_duration <= 0:
+                raise ProcessingError("Invalid silence duration")
+            item["duration"] = silence_duration
+        operations.append(item)
+    operations.sort(key=lambda item: (item["start"], item["end"]))
+    for previous, current in zip(operations, operations[1:]):
+        if current["start"] < previous["end"] - 0.001:
+            raise ProcessingError("Audio edit intervals must not overlap")
+    return operations
+
+
+def _audio_piece_filter(index, start, end, speed=1.0):
+    source_duration = end - start
+    output_duration = source_duration / speed
+    filters = [f"atrim=start={start:.6f}:end={end:.6f}", "asetpts=PTS-STARTPTS", *atempo_filters(speed)]
+    fade = min(0.005, output_duration / 4)
+    if fade > 0:
+        filters.extend([f"afade=t=in:st=0:d={fade:.6f}", f"afade=t=out:st={max(0, output_duration-fade):.6f}:d={fade:.6f}"])
+    return f"[0:a:0]{','.join(filters)}[p{index}]", f"[p{index}]"
+
+
+def _audio_silence_filter(index, duration):
+    return (
+        f"anullsrc=r=44100:cl=stereo,atrim=duration={duration:.6f},asetpts=PTS-STARTPTS[p{index}]",
+        f"[p{index}]",
+    )
+
+
+def _render_audio_editor(job):
+    inputs = _ordered_audio_editor_inputs(job)
+    if not inputs:
+        raise ProcessingError("Missing input: audio")
+    output = _output_dir(job)
+    temporary_source = None
+    if len(inputs) == 1:
+        source = Path(inputs[0].media_file.path)
+    else:
+        temporary_source = output / "combined-source.wav"
+        command = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
+        for item in inputs:
+            command.extend(["-i", str(item.media_file.path)])
+        normalized = [
+            f"[{index}:a:0]aresample=44100,aformat=sample_fmts=s16:channel_layouts=stereo,asetpts=PTS-STARTPTS[a{index}]"
+            for index in range(len(inputs))
+        ]
+        concat = "".join(f"[a{index}]" for index in range(len(inputs))) + f"concat=n={len(inputs)}:v=0:a=1[out]"
+        command.extend(["-filter_complex", ";".join([*normalized, concat]), "-map", "[out]", "-c:a", "pcm_s16le", str(temporary_source)])
+        _update(job, "joining source audio")
+        run(command)
+        source = temporary_source
+    track_durations = [float(item.get("duration", 0)) for item in (job.result_manifest or {}).get("tracks", [])]
+    duration = sum(track_durations) if track_durations and all(value > 0 for value in track_durations) else probe_duration(source)
+    operations = _validated_audio_operations(job.options.get("operations", []), duration)
+    output_format = job.options.get("output_format", "mp3")
+    if output_format not in {"mp3", "wav"}:
+        raise ProcessingError("Unsupported audio editor output format")
+    target = output / f"edited-audio.{output_format}"
+    mp3_bitrate = normalize_mp3_bitrate(job.options.get("mp3_bitrate"))
+    filters, labels, cursor, piece_index, rendered_duration = [], [], 0.0, 0, 0.0
+
+    def add_piece(start, end, speed=1.0):
+        nonlocal piece_index, rendered_duration
+        if end - start < 0.001:
+            return
+        expression, label = _audio_piece_filter(piece_index, start, end, speed)
+        filters.append(expression)
+        labels.append(label)
+        piece_index += 1
+        rendered_duration += (end - start) / speed
+
+    def add_silence(silence_duration):
+        nonlocal piece_index, rendered_duration
+        expression, label = _audio_silence_filter(piece_index, silence_duration)
+        filters.append(expression)
+        labels.append(label)
+        piece_index += 1
+        rendered_duration += silence_duration
+
+    for operation in operations:
+        add_piece(cursor, operation["start"])
+        if operation["type"] == "speed":
+            add_piece(operation["start"], operation["end"], operation["speed"])
+        elif operation["type"] == "silence":
+            add_silence(operation["duration"])
+        cursor = operation["end"]
+    add_piece(cursor, duration)
+    trailing_silence = float(job.options.get("trailing_silence", 0) or 0)
+    if not math.isfinite(trailing_silence) or trailing_silence < 0:
+        raise ProcessingError("Invalid trailing silence duration")
+    if trailing_silence:
+        add_silence(trailing_silence)
+    if not labels:
+        raise ProcessingError("The edits remove the complete audio track")
+    if len(labels) == 1:
+        filter_complex = f"{filters[0]};{labels[0]}anull[out]"
+    else:
+        filter_complex = f"{';'.join(filters)};{''.join(labels)}concat=n={len(labels)}:v=0:a=1[out]"
+    codec = ["-c:a", "pcm_s24le"] if output_format == "wav" else mp3_codec_arguments(mp3_bitrate)
+    _update(job, "rendering edits")
+    run([
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(source),
+        "-filter_complex", filter_complex, "-map", "[out]", "-vn", *codec, str(target),
+    ])
+    if temporary_source:
+        temporary_source.unlink(missing_ok=True)
+    manifest = dict(job.result_manifest or {})
+    manifest.update({
+        "stage": "result",
+        "editor_ready": True,
+        "operations": operations,
+        # MP3 containers include encoder delay/padding. Keep the user-facing
+        # duration in the same decoded-audio timeline used by the editor.
+        "output_duration": round(rendered_duration, 6),
+        "output_format": output_format,
+        "mp3_bitrate": mp3_bitrate,
+    })
+    job.result_manifest = manifest
+    return target
+
+
+def _edit_audio(job):
+    if job.options.get("phase") == "render":
+        return _render_audio_editor(job)
+    return _prepare_audio_editor(job)
+
+
 PROCESSORS = {
     MediaToolJob.KIND_TRANSCRIBE: _transcribe_audio,
+    MediaToolJob.KIND_EDIT_AUDIO: _edit_audio,
     MediaToolJob.KIND_REPLACE: _replace_fragment,
     MediaToolJob.KIND_SPLIT: _split_phrases,
     MediaToolJob.KIND_FIT: _fit_subtitles,

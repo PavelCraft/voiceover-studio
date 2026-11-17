@@ -14,7 +14,7 @@ import onnxruntime
 from django.conf import settings
 
 from studio.models import PhraseTimingProject
-from studio.services.voiceover import ProcessingError, probe_duration, probe_has_audio, run, transcribe
+from studio.services.voiceover import ProcessingError, probe_duration, probe_has_audio, run, transcribe_long_audio
 
 SAMPLE_RATE = 16_000
 WINDOW = 512
@@ -119,31 +119,10 @@ def clamp_phrases_to_duration(phrases, duration):
 
 
 def _transcribe_long(project, prepared, directory):
-    duration = probe_duration(prepared)
-    if duration <= 900:
-        return transcribe(prepared, directory / "transcription.json")
-    chunks = directory / "recognition-chunks"
-    chunks.mkdir(parents=True, exist_ok=True)
-    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(prepared),
-         "-map", "0:a:0", "-c", "copy", "-f", "segment", "-segment_time", "900",
-         "-reset_timestamps", "1", str(chunks / "%03d.flac")])
-    paths = sorted(chunks.glob("*.flac"))
-    combined = {"text": "", "words": [], "segments": [], "duration": duration, "language": ""}
-    offset = 0.0
-    for number, path in enumerate(paths, 1):
-        _update(project, f"recognizing {number}/{len(paths)}")
-        part = transcribe(path, chunks / f"{path.stem}.json")
-        combined["text"] = f"{combined['text']} {part.get('text', '')}".strip()
-        combined["language"] = combined["language"] or part.get("language", "")
-        for key in ("words", "segments"):
-            for source in part.get(key) or []:
-                item = dict(source)
-                item["start"] = float(item.get("start", 0)) + offset
-                item["end"] = float(item.get("end", 0)) + offset
-                combined[key].append(item)
-        offset += probe_duration(path)
-    (directory / "transcription.json").write_text(json.dumps(combined, ensure_ascii=False, indent=2), encoding="utf-8")
-    return combined
+    return transcribe_long_audio(
+        prepared, directory / "transcription.json",
+        progress=lambda index, total: _update(project, f"recognizing {index}/{total}"),
+    )
 
 
 def speech_probabilities(wav_path):
